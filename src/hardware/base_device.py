@@ -1,4 +1,5 @@
 import os
+import glob
 import yaml
 import numpy as np
 import pandas as pd
@@ -87,7 +88,11 @@ class BaseDevice(ABC):
 
         data_a и data_b — словари вида {'mean': массив, 'std': массив}
         """
-        if len(freqs_a) >= len(freqs_b):
+        if len(freqs_a) == len(freqs_b):
+            target_freqs = freqs_a
+            aligned_a = data_a
+            aligned_b = data_b
+        elif len(freqs_a) > len(freqs_b):
             # Сетка А подробнее или равна Б. Берем ее за основу.
             target_freqs = freqs_a
             aligned_a = data_a
@@ -108,60 +113,110 @@ class BaseDevice(ABC):
 
         return target_freqs, aligned_a, aligned_b
 
+    def _collect_file_paths(self, input_path) -> list:
+        """
+        Универсальный сборщик путей.
+        Понимает: одиночный файл, список файлов или путь к папке.
+        """
+        if isinstance(input_path, list):
+            # Если передан список, преобразуем относительные пути в абсолютные
+            return [os.path.join(self.device_dir_path, f) for f in input_path]
+
+        full_path = os.path.join(self.device_dir_path, input_path)
+
+        if os.path.isdir(full_path):
+            # Если это папка — забираем ВСЕ файлы .csv внутри нее
+            # Сортировка важна, чтобы файлы шли последовательно, хотя concat потом все равно отсортирует по частоте
+            found_files = sorted(glob.glob(os.path.join(full_path, "*.csv")))
+            if not found_files:
+                raise FileNotFoundError(f"[{self.name}] В папке {full_path} не найдено CSV-файлов!")
+            return found_files
+        elif os.path.isfile(full_path):
+            # Если это одиночный файл
+            return [full_path]
+        else:
+            raise FileNotFoundError(f"[{self.name}] Путь не найден: {full_path}")
+
+    def _read_and_merge_system_files(self, input_config, r_set, trace_cols) -> pd.DataFrame:
+        """Вспомогательный метод: собирает пути, читает файлы через Reader и склеивает их"""
+        file_paths = self._collect_file_paths(input_config)
+
+        dfs = []
+        for path in file_paths:
+            df_part = UniversalCSVReader.read_csv_data(
+                file_path=path,
+                data_start_marker=r_set.get('data_start_marker'),
+                delimiter=r_set.get('delimiter', ','),
+                use_columns=trace_cols,
+                nan_values=r_set.get('nan_values')
+            )
+            dfs.append(df_part)
+
+        # Склеиваем все считанные файлы (декады) и сортируем по частоте (колонка 0)
+        return pd.concat(dfs, ignore_index=True).sort_values(0)
+
     def _calculate_via_substitution(self, param_name: str, cfg: dict):
-        """Универсальный метод замещения с автоматическим выравниванием сеток частот"""
+        """Модернизированный метод замещения с поддержкой папок и списков файлов"""
         r_set = cfg.get('reader_settings', {})
-        trace_cols = r_set.get('use_columns', [1, 2, 3])  # колонки измерительных трасс (без частоты)
-        n_traces = len(trace_cols)
+        trace_cols = r_set.get('use_columns', )
 
-        sys1_file = os.path.join(self.device_dir_path, cfg['system1_baseline'])
-        sys2_file = os.path.join(self.device_dir_path, cfg['system2_with_cable'])
+        # Колонки для расчета средних (все, кроме колонки частоты, которая идет под индексом 0)
+        only_traces = [c for c in trace_cols if c != 0]
+        n_traces = len(only_traces)
 
-        # Читаем обе системы через маркер начала данных
-        df_sys1 = UniversalCSVReader.read_csv_data(sys1_file, data_start_marker=r_set.get('data_start_marker'))
-        df_sys2 = UniversalCSVReader.read_csv_data(sys2_file, data_start_marker=r_set.get('data_start_marker'))
+        # Автоматически собираем и читаем данные из папок или списков
+        df_sys1 = self._read_and_merge_system_files(cfg['system1_baseline'], r_set, trace_cols)
+        df_sys2 = self._read_and_merge_system_files(cfg['system2_with_cable'], r_set, trace_cols)
 
+        # 💡 ИСПРАВЛЕНИЕ: Вытаскиваем строго первую колонку (индекс 0) как одномерный вектор частот
+        # Свойство .values от pandas Series гарантированно возвращает одномерный массив (1D array)
         freqs_1 = df_sys1[0].values
         freqs_2 = df_sys2[0].values
 
-        # Собираем первичные расчетные метрики (среднее и СКО) для каждой системы локально
+        # Собираем расчетные метрики (среднее и СКО) по трассам измерений
         data_1 = {
-            'mean': df_sys1[trace_cols].mean(axis=1).values,
-            'std': df_sys1[trace_cols].std(axis=1, ddof=1).values
+            'mean': df_sys1[only_traces].mean(axis=1).values,
+            'std': df_sys1[only_traces].std(axis=1, ddof=1).values
         }
         data_2 = {
-            'mean': df_sys2[trace_cols].mean(axis=1).values,
-            'std': df_sys2[trace_cols].std(axis=1, ddof=1).values
+            'mean': df_sys2[only_traces].mean(axis=1).values,
+            'std': df_sys2[only_traces].std(axis=1, ddof=1).values
         }
 
-        # Выравниваем сетки (метод сам поймет, какой файл длиннее, и интерполирует короткий)
+        # Выравниваем частотные сетки (метод принимает одномерные массивы freqs_1 и freqs_2)
         target_freqs, aligned_1, aligned_2 = self._normalize_and_align_grids(freqs_1, data_1, freqs_2, data_2)
 
-        # Универсальный расчет разности (Система 2 - Система 1)
+        # Физический расчет затухания и неопределенности типа А
         calculated_values = aligned_2['mean'] - aligned_1['mean']
-
-        # Расчет стандартной неопределенности типа А (SEM = STD / sqrt(n))
         sem_1 = aligned_1['std'] / np.sqrt(n_traces)
         sem_2 = aligned_2['std'] / np.sqrt(n_traces)
         u_type_a = np.sqrt(sem_1 ** 2 + sem_2 ** 2)
 
-        # Сохраняем в универсальную базу
+        # Сохраняем в кэш девайса
         self.processed_parameters[param_name] = {
             'freq': target_freqs,
             'value': calculated_values,
             'u_standard': u_type_a
         }
-        print(
-            f"[{self.name}] Параметр '{param_name}' успешно рассчитан (размер целевой сетки: {len(target_freqs)} точек).")
+        print(f"[{self.name}] Успешный расчет '{param_name}'. Итоговый рабочий диапазон железа: "
+              f"{target_freqs.min() / 1e6:.2f} - {target_freqs.max() / 1e9:.2f} ГГц ({len(target_freqs)} точек).")
 
     def get_parameter_vector(self, parameter_name: str, target_frequencies: np.ndarray) -> tuple[
         np.ndarray, np.ndarray]:
-        """Универсальный интерфейс для внешнего Движка"""
+        """Универсальный интерфейс для внешнего Движка с экстраполяцией и контролем границ"""
         if parameter_name not in self.processed_parameters:
-            raise ValueError(f"[{self.name}] Параметр '{parameter_name}' не найден в обработанных данных.")
+            raise ValueError(f"[{self.name}] Параметр '{parameter_name}' не найден.")
 
         data = self.processed_parameters[parameter_name]
 
+        # Контролируем, не ушли ли мы в область экстраполяции (предсказания)
+        if target_frequencies.max() > data['freq'].max() or target_frequencies.min() < data['freq'].min():
+            print(f"[Метрологическое предупреждение]: Внимание! Запрошенные задачей частоты выходят за "
+                  f"пределы физических измерений прибора '{self.name}' "
+                  f"({data['freq'].min() / 1e6:.1f} МГц - {data['freq'].max() / 1e9:.1f} ГГц). "
+                  f"Включен режим математического предсказания (экстраполяции)!")
+
+        # Возвращаем интерполяцию/экстраполяцию
         val_interp = interp1d(data['freq'], data['value'], kind='linear', fill_value="extrapolate")(target_frequencies)
         u_interp = interp1d(data['freq'], data['u_standard'], kind='linear', fill_value="extrapolate")(
             target_frequencies)

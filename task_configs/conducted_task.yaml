@@ -1,0 +1,26 @@
+task_name: "Cable_Verification_Task"
+
+# Состав измерительной системы (указываем папки из корня hardware_library/)
+hardware_setup:
+  cable_system: "sucoflex_11m"
+
+# Настройки графиков
+plots_output:
+  generate_plots: true
+  items:
+    - device_id: "cable_system"       # Ссылаемся на ключ из hardware_setup (cable_system??) (Cable_11m??)
+      parameter: "S21"
+      show_uncertainty: true
+      sub_plots:
+        - title: "SUCOFLEX 11m - Low Frequency Range (Log)"
+          freq_min_hz: 150000         # 150 кГц
+          freq_max_hz: 30000000       # 30 МГц
+          x_scale: "log"
+          show_limit_line: true
+          limit_value_db: -1.0
+
+        - title: "SUCOFLEX 11m - High Frequency Range (Linear)"
+          freq_min_hz: 30000000       # 30 МГц
+          freq_max_hz: 1000000000     # 1 ГГц
+          x_scale: "linear"
+          show_limit_line: false

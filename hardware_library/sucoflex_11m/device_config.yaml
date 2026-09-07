@@ -1,0 +1,20 @@
+device_name: "SUCOFLEX 126E (40GHz Assembly)"
+device_short_id: "Cable_40G"
+device_type: "Cable"
+
+parameters:
+  S21:
+    source_type: "calculated_substitution"
+
+    # ВАРИАНТ А: Просто указываем папки. Ридер сам заберет все файлы из них!
+    system1_baseline: "raw_data/sys1"
+    system2_with_cable: "raw_data/sys2"
+
+    # ВАРИАНТ Б (на будущее): Если захотите жесткий список, ридер тоже его поймет:
+    # system1_baseline: ["raw_data/sys1/file1.csv", "raw_data/sys1/file2.csv"]
+
+    reader_settings:
+      data_start_marker: "DATA"
+      delimiter: ","
+      use_columns: [0, 1, 2, 3]
+      nan_values: [-893.01029995664]
