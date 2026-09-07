@@ -1,0 +1,18 @@
+device_name: "Attenuator 10 dB"
+device_short_id: "Att_10dB"
+
+parameters:
+  S21:
+    # Тип источника: 'table' (готовый паспорт), 'calculated_substitution' (наш расчет) или 'constant'
+    source_type: "table"
+    file_path: "calibration_passport.csv"
+    reader_settings:
+      skip_rows: 5
+      delimiter: ";"
+      columns_mapping: {frequency: 0, value: 1} # 0-я колонка частота, 1-я — значение S21
+
+    # Настройка неопределенности для этого параметра
+    uncertainty:
+      type: "constant" # Может быть 'constant' (одно число) или 'table' (из файла)
+      value: 0.15      # 0.15 дБ во всем диапазоне
+      distribution: "rectangular" # Движок сам поделит на sqrt(3)
