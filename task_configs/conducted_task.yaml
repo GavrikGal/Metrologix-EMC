@@ -12,15 +12,52 @@ plots_output:
       parameter: "S21"
       show_uncertainty: true
       sub_plots:
-        - title: "SUCOFLEX 11m - Low Frequency Range (Log)"
-          freq_min_hz: 150000         # 150 кГц
-          freq_max_hz: 30000000       # 30 МГц
-          x_scale: "log"
+        - title: "SUCOFLEX 11m - 100кГц...1МГц (Linear)"
+          freq_min_hz: 100000         # 100 кГц
+          freq_max_hz: 1000000        # 1 МГц
+          x_scale: "linear"              # "log" / "linear"
           show_limit_line: true
           limit_value_db: -1.0
 
-        - title: "SUCOFLEX 11m - High Frequency Range (Linear)"
-          freq_min_hz: 30000000       # 30 МГц
-          freq_max_hz: 1000000000     # 1 ГГц
+        - title: "SUCOFLEX 11m - 1МГц...10МГц (Linear)"
+          freq_min_hz: 1000000        # 1 МГц
+          freq_max_hz: 10000000       # 10 МГц
           x_scale: "linear"
           show_limit_line: false
+
+        - title: "SUCOFLEX 11m - 10МГц...100МГц (Linear)"
+          freq_min_hz: 10000000        # 10 МГц
+          freq_max_hz: 100000000       # 100 МГц
+          x_scale: "linear"
+          show_limit_line: false
+
+        - title: "SUCOFLEX 11m - 100МГц...1000МГц (Linear)"
+          freq_min_hz: 100000000        # 100 МГц
+          freq_max_hz: 1000000000       # 1000 МГц
+          x_scale: "linear"
+          show_limit_line: false
+
+        - title: "SUCOFLEX 11m - 1ГГц...10ГГц (Linear)"
+          freq_min_hz: 1000000000        # 1000 МГц
+          freq_max_hz: 10000000000       # 10000 МГц
+          x_scale: "linear"
+          show_limit_line: false
+
+        - title: "SUCOFLEX 11m - 10ГГц...40ГГц (Linear)"
+          freq_min_hz: 10000000000        # 10000 МГц
+          freq_max_hz: 40000000000        # 30000 МГц
+          x_scale: "linear"
+          show_limit_line: false
+
+#        - title: "SUCOFLEX 11m - Low Frequency Range (Linear)"
+#          freq_min_hz: 150000         # 150 кГц
+#          freq_max_hz: 30000000       # 30 МГц
+#          x_scale: "linear"              # "log" / "linear"
+#          show_limit_line: true
+#          limit_value_db: -1.0
+#
+#        - title: "SUCOFLEX 11m - High Frequency Range (Linear)"
+#          freq_min_hz: 30000000       # 30 МГц
+#          freq_max_hz: 1000000000     # 1 ГГц
+#          x_scale: "linear"
+#          show_limit_line: false
