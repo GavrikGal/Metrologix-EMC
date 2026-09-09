@@ -37,26 +37,78 @@ class MetrologixEngine:
                 self.active_devices[role] = RFCableSystem(device_dir)
                 print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
 
-    def _prepare_parameter_data(self, role_id: str, param_name: str,
-                                f_min: float, f_max: float,
-                                scale_type: str = 'linear', points_count: int = 400) -> tuple[
+    def _generate_target_frequencies(self, device, param_name: str, settings: dict) -> np.ndarray:
+        """
+        Универсальный генератор целевой сетки частот на основе конфигурации задачи.
+        Разделяет логику метода формирования (grid_type) и масштаба осей (scale_type).
+        """
+        grid_type = settings.get('frequency_grid_type', 'by_points_count').strip().lower()
+        scale_type = settings.get('scale_type', 'linear').strip().lower()
+
+        # 🎯 Метод 1: Строго точки калибровки из файлов прибора (k=1 прослеживаемость)
+        if grid_type == 'calibration_points':
+            return device.get_default_frequencies(param_name)
+
+        # 🎯 Метод 2: Фиксированный пользовательский список частот из YAML с конвертацией единиц
+        if grid_type == 'custom_list':
+            custom_freqs = settings.get('custom_frequencies', [])
+            if not custom_freqs:
+                raise ValueError(
+                    f"[Engine] Выбран режим 'custom_list', но массив 'custom_frequencies' пуст для {device.name}")
+
+            # Находим, в каких единицах пользователь ввел список (по умолчанию Hz)
+            user_unit = settings.get('custom_frequencies_unit', 'Hz').strip()
+
+            # 💡 УМНЫЙ ПЕРЕВОД: Считаем коэффициент перевода из единиц пользователя в системные Гц
+            # Например, если user_unit='MHz', то get_ratio('MHz', 'Hz') вернет 1e6
+            conversion_ratio = FrequencyConverter.get_ratio(from_unit=user_unit, to_unit='Hz')
+
+            # Переводим весь список частот в Герцы и превращаем в отсортированный NumPy массив
+            freqs_in_hz = np.array(custom_freqs, dtype=float) * conversion_ratio
+            return np.sort(freqs_in_hz)
+
+        # Для расчетных методов (по шагу или количеству точек) извлекаем физический диапазон прибора
+        hardware_freqs = device.get_default_frequencies(param_name)
+        f_min = float(settings.get('freq_min_hz', hardware_freqs.min()))
+        f_max = float(settings.get('freq_max_hz', hardware_freqs.max()))
+
+        # 🎯 Метод 3: Сетка строится по заданному шагу по частоте
+        if grid_type == 'by_step':
+            if scale_type == 'log':
+                # Логарифмический шаг на основе множителя (умножение на коэффициент)
+                multiplier = float(settings.get('step_multiplier', 1.1))
+                if multiplier <= 1.0:
+                    raise ValueError(
+                        "[Engine] Для логарифмического шага 'step_multiplier' должен быть строго больше 1.0")
+                freqs = []
+                current_f = f_min
+                while current_f <= f_max:
+                    freqs.append(current_f)
+                    current_f *= multiplier
+                return np.array(freqs)
+            else:
+                # Классический линейный шаг частоты, например, через каждые 10 кГц
+                step = float(settings.get('step_value_hz', 10e3))
+                return np.arange(f_min, f_max + step, step)
+
+        # 🎯 Метод 4: Сетка строится по фиксированному количеству точек (by_points_count)
+        pts_count = int(settings.get('points_count', 300))
+        if scale_type == 'log':
+            return np.logspace(np.log10(f_min), np.log10(f_max), num=pts_count)
+        else:
+            return np.linspace(f_min, f_max, num=pts_count)
+
+    def _prepare_parameter_data(self, role_id: str, param_name: str, settings: dict) -> tuple[
         np.ndarray, np.ndarray, np.ndarray]:
-        """
-        УНИВЕРСАЛЬНЫЙ МЕТОД ПОДГОТОВКИ ДАННЫХ.
-        Генерирует нужную частотную сетку и запрашивает векторы у прибора.
-        Используется и для графиков, и (в будущем) для файлов коррекции.
-        """
+        """Модернизированный метод подготовки векторов данных с умной сеткой частот"""
         device = self.active_devices.get(role_id)
         if not device:
             raise ValueError(f"Устройство для роли '{role_id}' не найдено в текущей схеме.")
 
-        # Генерируем частотную сетку в зависимости от масштаба
-        if scale_type == 'log':
-            frequencies = np.logspace(np.log10(f_min), np.log10(f_max), num=points_count)
-        else:
-            frequencies = np.linspace(f_min, f_max, num=points_count)
+        # 💡 ГЕНЕРИРУЕМ ЧАСТОТНУЮ СЕТКУ НА ОСНОВЕ ОПЦИЙ ЗАДАЧИ
+        frequencies = self._generate_target_frequencies(device, param_name, settings)
 
-        # Запрашиваем интерполированные данные через универсальный интерфейс BaseDevice
+        # Запрашиваем интерполированные (или точечные) векторы у прибора
         y_values, u_standard = device.get_parameter_vector(param_name, frequencies)
 
         return frequencies, y_values, u_standard
@@ -187,12 +239,11 @@ class MetrologixEngine:
                 # Извлекаем физические границы
                 hardware_freqs = device.processed_parameters[param_name]['freq']
 
-                # Подготавливаем сглаженную сетку частот по настройкам шага из задачи
+                # Движок сам генерирует сетку частот (включая calibration_points) и забирает векторы
                 freqs, values, _ = self._prepare_parameter_data(
-                    role_id=device_role, param_name=param_name,
-                    f_min=hardware_freqs.min(), f_max=hardware_freqs.max(),
-                    scale_type='log' if settings.get('step_mode') == 'logspace' else 'linear',
-                    points_count=settings.get('points_count', 300)
+                    role_id=device_role,
+                    param_name=param_name,
+                    settings=settings  # Передаем весь словарь настроек экспорта этого девайса
                 )
 
                 # 💡 ОПРЕДЕЛЯЕМ МНОЖИТЕЛЬ ЗНАКА: читаем флаг invert_sign из конфига задачи

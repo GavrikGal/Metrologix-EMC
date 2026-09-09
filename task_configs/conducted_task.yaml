@@ -13,8 +13,57 @@ hardware_corrections_output:
       export: true
       target_parameter: "S21"         # Какой параметр выгружаем
       invert_sign: true               # 💡 ИНВЕРСИЯ ТЕПЕРЬ ТУТ: преобразуем затухание в Loss (умножаем на -1)
-      step_mode: "logspace"           # Логарифмический шаг частоты
-      points_count: 30               # Количество точек коррекции
+      frequency_grid_type: "custom_list"      # Метод: фиксированный список частот
+
+        # 💡 ПРОФЕССИОНАЛЬНАЯ НАСТРОЙКА: задаем единицу измерения для списка (Hz, kHz, MHz, GHz)
+      custom_frequencies_unit: "MHz"
+
+        # Перечисляем частоты в выбранных единицах (в МГц) — теперь никаких лишних нулей!
+      custom_frequencies: [ 0.15, 1.0, 10.0, 30.0, 100.0, 500.0, 1000.0, 18000.0, 40000.0 ]
+
+
+    # РЕЖИМ 1: Формирование сетки по фиксированному количеству точек (By Points Count)
+#    cable_system:
+#      export: true
+#      target_parameter: "S21"
+#      invert_sign: true
+#      frequency_grid_type: "by_points_count"  # Метод: задаем количество точек
+#      scale_type: "log"                       # Масштаб: логарифмический
+#      points_count: 200                       # Итого 200 точек в лог-масштабе
+#
+#    # РЕЖИМ 2: Формирование сетки "точка в точку" из поверки (Метрологический эталон)
+#    lisn_amn:
+#      export: true
+#      target_parameter: "Division_Factor"
+#      invert_sign: false
+#      frequency_grid_type: "calibration_points" # Метод: берем оригинальные точки из файла девайса
+      # (Ключи scale_type, points_count и т.д. здесь не нужны и будут проигнорированы)
+
+    # РЕЖИМ 3: Формирование сетки по кастомному (пользовательскому) списку частот
+#    custom_device_test:
+#      export: true
+#      target_parameter: "S21"
+#      invert_sign: true
+#      frequency_grid_type: "custom_list"      # Метод: фиксированный список частот
+#
+#      # 💡 ПРОФЕССИОНАЛЬНАЯ НАСТРОЙКА: задаем единицу измерения для списка (Hz, kHz, MHz, GHz)
+#      custom_frequencies_unit: "MHz"
+#
+#      # Перечисляем частоты в выбранных единицах (в МГц) — теперь никаких лишних нулей!
+#      custom_frequencies: [0.15, 1.0, 10.0, 30.0, 100.0, 500.0, 1000.0, 18000.0, 40000.0]
+
+    # РЕЖИМ 4: Формирование сетки с фиксированным физическим шагом (By Step)
+    # protective_limiter:
+    #   export: true
+    #   target_parameter: "S21"
+    #   invert_sign: true
+    #   frequency_grid_type: "by_step"          # Метод: задаем шаг по частоте
+    #   scale_type: "linear"                    # Масштаб: линейный (linear) или логарифмический (log)
+    #   step_value_hz: 50000                    # Шаг строго 50 кГц (применится для linear)
+    #   step_multiplier: 1.15                   # Множитель шага (применится, если scale_type: "log")
+
+
+
 
 
 # Настройки графиков
