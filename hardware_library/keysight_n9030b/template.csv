@@ -1,0 +1,12 @@
+Amplitude Correction
+""
+""
+A.27.05,{{ model_name }}
+550 B1X B1Y B25 B40 DP2 DP4 EP1 FS1 FS2 FSA LFE MPB NF2 NUL P50 PFR RTL RTS RT1 ESC FT1 RCL ,01
+Frequency Unit,{{ freq_unit }}
+Antenna Unit,{{ antenna_unit }}
+Frequency Interpolation,{{ interpolation_type }}
+DATA
+{% for freq, val in data_points -%}
+{{ "%.4f"|format(freq) }},{{ "%.3f"|format(val) }}
+{% endfor %}

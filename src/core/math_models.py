@@ -1,6 +1,25 @@
 import numpy as np
 
 
+class FrequencyConverter:
+    """Универсальный метрологический конвертер единиц частоты"""
+    _UNITS = {
+        'hz': 1.0,
+        'khz': 1e3,
+        'mhz': 1e6,
+        'ghz': 1e9
+    }
+
+    @classmethod
+    def get_ratio(cls, from_unit: str, to_unit: str) -> float:
+        """Возвращает множитель для перевода из одной единицы в другую"""
+        f = from_unit.strip().lower()
+        t = to_unit.strip().lower()
+        if f not in cls._UNITS or t not in cls._UNITS:
+            raise ValueError(f"Неподдерживаемая единица частоты. Допустимы: {list(cls._UNITS.keys())}")
+        return cls._UNITS[f] / cls._UNITS[t]
+
+
 class DistributionDecomposition:
     """
     Математический модуль для приведения различных законов распределения погрешностей

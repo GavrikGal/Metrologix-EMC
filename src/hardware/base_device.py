@@ -83,33 +83,32 @@ class BaseDevice(ABC):
     def _normalize_and_align_grids(self, freqs_a: np.ndarray, data_a: dict,
                                    freqs_b: np.ndarray, data_b: dict) -> tuple[np.ndarray, dict, dict]:
         """
-        Вспомогательный метод: сравнивает две частотные сетки,
-        выбирает наиболее подробную в качестве целевой и интерполирует редкие данные.
-
-        data_a и data_b — словари вида {'mean': массив, 'std': массив}
+        Выравнивает частотные сетки, ограничивая итоговый диапазон строго зоной
+        пересечения (intersection), защищая края от разлета неопределенности.
         """
-        if len(freqs_a) == len(freqs_b):
-            target_freqs = freqs_a
-            aligned_a = data_a
-            aligned_b = data_b
-        elif len(freqs_a) > len(freqs_b):
-            # Сетка А подробнее или равна Б. Берем ее за основу.
-            target_freqs = freqs_a
-            aligned_a = data_a
+        # Находим строго общий диапазон частот, где данные есть у ОБЕИХ систем
+        min_freq = max(freqs_a.min(), freqs_b.min())
+        max_freq = min(freqs_a.max(), freqs_b.max())
 
-            aligned_b = {
-                'mean': interp1d(freqs_b, data_b['mean'], kind='linear', fill_value="extrapolate")(target_freqs),
-                'std': interp1d(freqs_b, data_b['std'], kind='linear', fill_value="extrapolate")(target_freqs)
-            }
+        # Выбираем, какая сетка подробнее внутри этого общего диапазона
+        if len(freqs_a) >= len(freqs_b):
+            mask = (freqs_a >= min_freq) & (freqs_a <= max_freq)
+            target_freqs = freqs_a[mask]
         else:
-            # Сетка Б подробнее. Интерполируем данные А под нее.
-            target_freqs = freqs_b
-            aligned_b = data_b
+            mask = (freqs_b >= min_freq) & (freqs_b <= max_freq)
+            target_freqs = freqs_b[mask]
 
-            aligned_a = {
-                'mean': interp1d(freqs_a, data_a['mean'], kind='linear', fill_value="extrapolate")(target_freqs),
-                'std': interp1d(freqs_a, data_a['std'], kind='linear', fill_value="extrapolate")(target_freqs)
-            }
+        # Интерполируем строго внутри гарантированных физических границ (bounds_error=True保護)
+        # Больше никакой слепой экстраполяции для векторов средних и СКО!
+        aligned_a = {
+            'mean': interp1d(freqs_a, data_a['mean'], kind='linear', bounds_error=True)(target_freqs),
+            'std': interp1d(freqs_a, data_a['std'], kind='linear', bounds_error=True)(target_freqs)
+        }
+
+        aligned_b = {
+            'mean': interp1d(freqs_b, data_b['mean'], kind='linear', bounds_error=True)(target_freqs),
+            'std': interp1d(freqs_b, data_b['std'], kind='linear', bounds_error=True)(target_freqs)
+        }
 
         return target_freqs, aligned_a, aligned_b
 
@@ -138,22 +137,63 @@ class BaseDevice(ABC):
             raise FileNotFoundError(f"[{self.name}] Путь не найден: {full_path}")
 
     def _read_and_merge_system_files(self, input_config, r_set, trace_cols) -> pd.DataFrame:
-        """Вспомогательный метод: собирает пути, читает файлы через Reader и склеивает их"""
-        file_paths = self._collect_file_paths(input_config)
+        """Служебный метод: читает файлы декад, склеивает их и учитывает индивидуальные смещения дБ"""
+        # Определяем колонки трасс для применения смещения (все, кроме колонки частоты 0)
+        only_traces = [c for c in trace_cols if c != 0]
+
+        # Если в конфиге передана просто строка-путь к папке (как мы делали для чтения всех файлов)
+        if isinstance(input_config, str):
+            file_paths = self._collect_file_paths(input_config)
+            # Создаем список словарей по умолчанию (без смещений)
+            file_items = [{'path': p, 'offset_db': 0.0} for p in file_paths]
+        else:
+            # Если передан список из YAML
+            file_items = []
+            for item in input_config:
+                if isinstance(item, str):
+                    # Если элемент списка — обычная строка-путь
+                    file_items.append({'path': item, 'offset_db': 0.0})
+                elif isinstance(item, dict):
+                    # Если элемент списка — словарь со смещением
+                    file_items.append({
+                        'path': item.get('path'),
+                        'offset_db': float(item.get('offset_db', 0.0))
+                    })
 
         dfs = []
-        for path in file_paths:
+        for item in file_items:
+            # Превращаем относительный путь в абсолютный
+            full_path = os.path.join(self.device_dir_path, item['path'])
+
+            # Читаем декаду через универсальный ридер
             df_part = UniversalCSVReader.read_csv_data(
-                file_path=path,
+                file_path=full_path,
                 data_start_marker=r_set.get('data_start_marker'),
                 delimiter=r_set.get('delimiter', ','),
                 use_columns=trace_cols,
                 nan_values=r_set.get('nan_values')
             )
+
+            # 💡 ПРИМЕНЯЕМ СМЕЩЕНИЕ УРОВНЯ ГЕНЕРАТОРА (если оно задано)
+            if item['offset_db'] != 0.0:
+                df_part[only_traces] = df_part[only_traces] + item['offset_db']
+                # ИСПРАВЛЕНИЕ: Используем стандартный метрологический формат :+.1f (выведет, например, +20.0)
+                print(f"[{self.name}] Применено смещение {item['offset_db']:+.1f} дБ к файлу: {os.path.basename(item['path'])}")
+
             dfs.append(df_part)
 
-        # Склеиваем все считанные файлы (декады) и сортируем по частоте (колонка 0)
-        return pd.concat(dfs, ignore_index=True).sort_values(0)
+        # Склеиваем все декады в один DataFrame
+        df_merged = pd.concat(dfs, ignore_index=True)
+
+        # Сортируем по частоте (колонка 0), чтобы стыки шли по порядку
+        df_merged = df_merged.sort_values(0)
+
+        # 💡 МЕТРОЛОГИЧЕСКОЕ РЕШЕНИЕ: Убираем groupby.mean(), который искажал СКО.
+        # Вместо этого просто удаляем дубликаты частот, оставляя точку из более поздней декады (keep='last').
+        # Это сохраняет чистую дисперсию трасс без искусственного завышения неопределенности!
+        df_merged = df_merged.drop_duplicates(subset=[0], keep='last')
+
+        return df_merged
 
     def _calculate_via_substitution(self, param_name: str, cfg: dict):
         """Модернизированный метод замещения с поддержкой папок и списков файлов"""
@@ -203,18 +243,25 @@ class BaseDevice(ABC):
 
     def get_parameter_vector(self, parameter_name: str, target_frequencies: np.ndarray) -> tuple[
         np.ndarray, np.ndarray]:
-        """Универсальный интерфейс для внешнего Движка с экстраполяцией и контролем границ"""
+        """Универсальный интерфейс для Движка с экстраполяцией и защитой от ложных округлений"""
         if parameter_name not in self.processed_parameters:
             raise ValueError(f"[{self.name}] Параметр '{parameter_name}' не найден.")
 
         data = self.processed_parameters[parameter_name]
 
-        # Контролируем, не ушли ли мы в область экстраполяции (предсказания)
-        if target_frequencies.max() > data['freq'].max() or target_frequencies.min() < data['freq'].min():
-            print(f"[Метрологическое предупреждение]: Внимание! Запрошенные задачей частоты выходят за "
-                  f"пределы физических измерений прибора '{self.name}' "
-                  f"({data['freq'].min() / 1e6:.1f} МГц - {data['freq'].max() / 1e9:.1f} ГГц). "
-                  f"Включен режим математического предсказания (экстраполяции)!")
+        f_min_hardware = data['freq'].min()
+        f_max_hardware = data['freq'].max()
+
+        # 💡 МЕТРОЛОГИЧЕСКИЙ ДОПУСК: 0.01% от границ для защиты от погрешности float округления np.logspace
+        tolerance_min = f_min_hardware * 0.0001
+        tolerance_max = f_max_hardware * 0.0001
+
+        # Проверяем реальный жесткий выход за границы с учетом допуска
+        if (target_frequencies.max() > (f_max_hardware + tolerance_max) or
+                target_frequencies.min() < (f_min_hardware - tolerance_min)):
+            print(f"[Метрологическое предупреждение]: Внимание! Запрошенные частоты действительно выходят за "
+                  f"пределы измерений '{self.name}' ({f_min_hardware / 1e6:.2f} МГц - {f_max_hardware / 1e9:.2f} ГГц). "
+                  f"Включен режим математического предсказания!")
 
         # Возвращаем интерполяцию/экстраполяцию
         val_interp = interp1d(data['freq'], data['value'], kind='linear', fill_value="extrapolate")(target_frequencies)
@@ -222,3 +269,9 @@ class BaseDevice(ABC):
             target_frequencies)
 
         return val_interp, u_interp
+
+    def get_default_frequencies(self, parameter_name: str) -> np.ndarray:
+        """Возвращает оригинальную (дефолтную) ось частот параметра, считанную из файлов прибора"""
+        if parameter_name not in self.processed_parameters:
+            raise ValueError(f"[{self.name}] Параметр '{parameter_name}' еще не обработан или отсутствует.")
+        return self.processed_parameters[parameter_name]['freq']

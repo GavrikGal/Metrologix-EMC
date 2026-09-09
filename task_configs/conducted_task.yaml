@@ -1,8 +1,21 @@
 task_name: "Cable_Verification_Task"
 
-# Состав измерительной системы (указываем папки из корня hardware_library/)
 hardware_setup:
-  cable_system: "sucoflex_11m"
+  receiver: "keysight_n9030b"         # Папка приемника в hardware_library
+  cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
+
+# ЦЕНТРАЛИЗОВАННЫЕ НАСТРОЙКИ ЭКСПОРТА КОРРЕКЦИЙ В ЗАДАЧЕ
+hardware_corrections_output:
+  generate_corrections: true          # Включить модуль генерации файлов
+
+  devices_to_export:
+    cable_system:                     # Ссылаемся на роль в схеме
+      export: true
+      target_parameter: "S21"         # Какой параметр выгружаем
+      invert_sign: true               # 💡 ИНВЕРСИЯ ТЕПЕРЬ ТУТ: преобразуем затухание в Loss (умножаем на -1)
+      step_mode: "logspace"           # Логарифмический шаг частоты
+      points_count: 30               # Количество точек коррекции
+
 
 # Настройки графиков
 plots_output:
@@ -45,9 +58,27 @@ plots_output:
 
         - title: "SUCOFLEX 11m - 10ГГц...40ГГц (Linear)"
           freq_min_hz: 10000000000        # 10000 МГц
-          freq_max_hz: 40000000000        # 30000 МГц
+          freq_max_hz: 40000000000        # 40000 МГц
           x_scale: "linear"
           show_limit_line: false
+
+#        - title: "SUCOFLEX 11m - 10МГц...1ГГц (Linear)"
+#          freq_min_hz: 10000000          # 10 МГц
+#          freq_max_hz: 1000000000        # 1000 МГц
+#          x_scale: "linear"
+#          show_limit_line: false
+#
+#        - title: "SUCOFLEX 11m - 100МГц...10ГГц (Linear)"
+#          freq_min_hz: 100000000          # 100 МГц
+#          freq_max_hz: 10000000000        # 10000 МГц
+#          x_scale: "linear"
+#          show_limit_line: false
+#
+#        - title: "SUCOFLEX 11m - 1ГГц...40ГГц (Linear)"
+#          freq_min_hz: 1000000000        # 1000 МГц
+#          freq_max_hz: 40000000000        # 30000 МГц
+#          x_scale: "linear"
+#          show_limit_line: false
 
 #        - title: "SUCOFLEX 11m - Low Frequency Range (Linear)"
 #          freq_min_hz: 150000         # 150 кГц

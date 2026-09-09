@@ -1,17 +1,40 @@
-device_name: "SUCOFLEX 126E (40GHz Assembly)"
-device_short_id: "Cable_40G"
+device_name: "SUCOFLEX High-Frequency Assembly"
+device_short_id: "SUCOFLEX 1.5m+10m"
+serial_number: "SN-99999"             # Добавили серийный номер кабеля
 device_type: "Cable"
+
+# Указываем, в каких единицах записана частота в сырых файлах на диске
+hardware_data_info:
+  frequency_unit: "Hz"                # Анализатор Keysight пишет в Гц (100000, 100900...)
 
 parameters:
   S21:
     source_type: "calculated_substitution"
 
     # ВАРИАНТ А: Просто указываем папки. Ридер сам заберет все файлы из них!
-    system1_baseline: "raw_data/sys1"
-    system2_with_cable: "raw_data/sys2"
+#    system1_baseline: "raw_data/sys1"
+#    system2_with_cable: "raw_data/sys2"
 
     # ВАРИАНТ Б (на будущее): Если захотите жесткий список, ридер тоже его поймет:
-    # system1_baseline: ["raw_data/sys1/file1.csv", "raw_data/sys1/file2.csv"]
+    # Система 1 (Опора)
+    system1_baseline:
+      - path: "raw_data/sys1/U 01-1MHz [U_gen=100dB Step=300Hz Dwell=10ms + RBW=1kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys1/U 1-10MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=10kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys1/U 10-100MHz [U_gen=100dB Step=30kHz Dwell=10ms + RBW=100kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys1/U 100-1000MHz [U_gen=100dB Step=300kHz Dwell=10ms + RBW=1MHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys1/U 1-10GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=6MHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys1/U 10-40GHz [U_gen=100dB Step=10MHz Dwell=100ms + RBW=8MHz Att=10dB trs=3].csv"
+        offset_db: 20.0  # компенсируем разницу генератора (+20 дБ)
+
+    # Система 2 (Тракт с кабелем)
+    system2_with_cable:
+      - path: "raw_data/sys2/U 01-1MHz [U_gen=100dB Step=300Hz Dwell=10ms + RBW=1kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys2/U 1-10MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=10kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys2/U 10-100MHz [U_gen=100dB Step=30kHz Dwell=10ms + RBW=100kHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys2/U 100-1000MHz [U_gen=100dB Step=300kHz Dwell=10ms + RBW=1MHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys2/U 1-10GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=6MHz Att=10dB trs=3].csv"
+      - path: "raw_data/sys2/U 10-40GHz [U_gen=120dB Step=10MHz Dwell=100ms + RBW=8MHz Att=10dB trs=3].csv"
+        # Здесь offset_db не нужен (или равен 0.0), так как это наш целевой уровень 120 дБ
 
     reader_settings:
       data_start_marker: "DATA"

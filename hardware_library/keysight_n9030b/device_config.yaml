@@ -1,0 +1,14 @@
+device_name: "Keysight PXA"
+device_short_id: "N9030B"
+serial_number: "MY60070596"
+device_type: "Receiver"
+
+correction_export_rules:
+  template_file: "template.csv"       # Шаблон теперь сразу имеет нужное прибору расширение
+  target_freq_unit: "MHz"             # Прибор ждет частоту в МГц
+
+  template_meta:
+    model_name: "N9030B"
+    freq_unit: "MHz"
+    antenna_unit: "None"
+    interpolation_type: "Linear"
