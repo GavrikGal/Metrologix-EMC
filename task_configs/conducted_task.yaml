@@ -12,14 +12,16 @@ hardware_corrections_output:
     cable_system:                     # Ссылаемся на роль в схеме
       export: true
       target_parameter: "S21"         # Какой параметр выгружаем
-      invert_sign: true               # 💡 ИНВЕРСИЯ ТЕПЕРЬ ТУТ: преобразуем затухание в Loss (умножаем на -1)
+      invert_sign: true               # Преобразуем затухание в Loss (умножаем на -1)
       frequency_grid_type: "custom_list"      # Метод: фиксированный список частот
-
-        # 💡 ПРОФЕССИОНАЛЬНАЯ НАСТРОЙКА: задаем единицу измерения для списка (Hz, kHz, MHz, GHz)
       custom_frequencies_unit: "MHz"
-
-        # Перечисляем частоты в выбранных единицах (в МГц) — теперь никаких лишних нулей!
       custom_frequencies: [ 0.15, 1.0, 10.0, 30.0, 100.0, 500.0, 1000.0, 18000.0, 40000.0 ]
+
+    receiver:
+      export: true
+      target_parameter: "Sine_Accuracy"
+      invert_sign: true
+      frequency_grid_type: calibration_points
 
 
     # РЕЖИМ 1: Формирование сетки по фиксированному количеству точек (By Points Count)

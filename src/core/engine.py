@@ -33,9 +33,14 @@ class MetrologixEngine:
             if not os.path.exists(device_dir):
                 raise FileNotFoundError(f"Папка оборудования '{folder_name}' не найдена в {hardware_lib_path}")
 
+            # Внутри цикла сборки схемы в engine.py:
             if role == 'cable_system':
                 self.active_devices[role] = RFCableSystem(device_dir)
-                print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
+            elif role == 'receiver':
+                from src.hardware.receiver.receiver import EMCReceiver
+                self.active_devices[role] = EMCReceiver(device_dir)
+
+            print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
 
     def _generate_target_frequencies(self, device, param_name: str, settings: dict) -> np.ndarray:
         """
@@ -114,7 +119,7 @@ class MetrologixEngine:
         return frequencies, y_values, u_standard
 
     def _generate_all_plots(self):
-        """Выделенный метод обработки и вывода графиков"""
+        """Выделенный метод обработки и вывода графиков, полностью синхронизированный с новым интерфейсом сеток"""
         plots_cfg = self.task_config.get('plots_output', {})
         if not plots_cfg.get('generate_plots', False) or not self.active_devices:
             return
@@ -132,14 +137,21 @@ class MetrologixEngine:
 
             for sub in item.get('sub_plots', []):
                 try:
-                    # Подготавливаем данные с помощью нашего нового универсального метода
+                    # 💡 ИСПРАВЛЕНИЕ: Формируем временный словарь настроек сетки прямо из подграфика,
+                    # чтобы наш новый метод _prepare_parameter_data отработал корректно!
+                    grid_settings = {
+                        'frequency_grid_type': 'by_points_count',  # График всегда строим по точкам
+                        'scale_type': sub.get('x_scale', 'linear'),
+                        'freq_min_hz': sub.get('freq_min_hz'),
+                        'freq_max_hz': sub.get('freq_max_hz'),
+                        'points_count': 400  # 400 точек для идеальной плавности на экране
+                    }
+
+                    # Передаем словарь в обновленный метод
                     freqs, values, u_std = self._prepare_parameter_data(
                         role_id=role_id,
                         param_name=param_name,
-                        f_min=sub.get('freq_min_hz'),
-                        f_max=sub.get('freq_max_hz'),
-                        scale_type=sub.get('x_scale', 'linear'),
-                        points_count=400
+                        settings=grid_settings
                     )
 
                     # Передаем чистые векторы Визуализатору
@@ -175,29 +187,33 @@ class MetrologixEngine:
 
         return rules, rx_dir, rx_cfg
 
-    def _build_informative_filename(self, device, rules_cfg: dict) -> str:
-        """Генерирует имя файла по ГОСТ-шаблону: 'Device_Type, Short_ID №SN (Частотный диапазон).ext'"""
+    def _build_informative_filename(self, device, param_name: str, rules_cfg: dict) -> str:
+        """
+        Генерирует строгое, компактное и красивое имя файла по ГОСТ-шаблону:
+        'Device_Type, Short_ID №SN (Частотный диапазон).ext'
+        """
         dev_cfg = device.config
 
-        # 💡 КОРРЕКТНОЕ ИМЯ: 'device_type, device_short_id'
+        # Собираем базовую информацию о приборе
         dev_type = dev_cfg.get('device_type', 'Device')
         short_id = dev_cfg.get('device_short_id', 'Unknown')
         sn_suffix = f" №{dev_cfg['serial_number']}" if 'serial_number' in dev_cfg else ""
 
         base_name = f"{dev_type}, {short_id}{sn_suffix}"
 
-        # Извлекаем физические границы частот оборудования из рассчитанного кэша
-        param_name = "S21"
+        # 💡 ИСПРАВЛЕНИЕ 1: Извлекаем физические границы строго для текущего ОБРАБАТЫВАЕМОГО параметра
         freqs_hz = device.processed_parameters[param_name]['freq']
+        f_min_hz = freqs_hz.min()
+        f_max_hz = freqs_hz.max()
 
-        f_min_mhz = freqs_hz.min() / 1e6
-        f_max_ghz = freqs_hz.max() / 1e9
+        # 💡 ИСПРАВЛЕНИЕ 2: Используем умный автоматический конвертер для красивой строки диапазона
+        freq_range_str = FrequencyConverter.format_frequency_range(f_min_hz, f_max_hz)
 
         # Автоматически подтягиваем расширение из имени файла шаблона
         _, ext = os.path.splitext(rules_cfg.get('template_file', '.csv'))
 
-        # Итог: "Cable, Cable №SN-99999 (0.10 MHz - 40.00 GHz).csv"
-        filename = f"{base_name} ({f_min_mhz:.2f} MHz - {f_max_ghz:.2f} GHz){ext}"
+        # Итог: "Cable, Cable №SN-99999 (0.10 MHz - 40.00 GHz).csv" или "Receiver, N9030B (0.00 MHz - 37.50 GHz).csv"
+        filename = f"{base_name} ({freq_range_str}){ext}"
 
         # Очистка от запрещенных символов файловой системы
         for char in ['*', ':', '"', '<', '>', '|', '?']:
@@ -214,15 +230,14 @@ class MetrologixEngine:
         receiver_folder = self.task_config['hardware_setup'].get('receiver')
 
         try:
-            # 1. Загружаем правила экспорта выбранного анализатора
+            # Загружаем правила экспорта выбранного анализатора
             rules, rx_dir, rx_cfg = self._get_receiver_export_rules(receiver_folder)
             template_path = os.path.join(rx_dir, rules.get('template_file'))
             target_freq_unit = rules.get('target_freq_unit', 'MHz')
 
-            # Импортируем наш универсальный класс экспорта
             from src.reports.template_exporter import TemplateExporter
 
-            # 2. Итерируемся по списку оборудования из задачи, для которого включен экспорт
+            # Итерируемся по списку оборудования из задачи, для которого включен экспорт
             for device_role, settings in corr_cfg.get('devices_to_export', {}).items():
                 if not settings.get('export', False):
                     continue
@@ -231,41 +246,49 @@ class MetrologixEngine:
                 if not device:
                     continue
 
-                # 💡 ДИНАМИЧЕСКИЙ ПАРАМЕТР: берем имя параметра прямо из настроек текущей задачи
-                param_name = settings.get('target_parameter', 'S21')
+                param_name = settings.get('target_parameter')
+                if not param_name:
+                    print(
+                        f"[Engine] Ошибка: для роли '{device_role}' не указан 'target_parameter' в настройках экспорта.")
+                    continue
+
                 if param_name not in device.processed_parameters:
                     raise KeyError(f"Прибор {device.name} не имеет рассчитанного параметра '{param_name}'")
 
-                # Извлекаем физические границы
+                # Опрашиваем диапазон частот строго для обрабатываемого параметра
                 hardware_freqs = device.processed_parameters[param_name]['freq']
 
-                # Движок сам генерирует сетку частот (включая calibration_points) и забирает векторы
+                export_settings = settings.copy()
+                if 'freq_min_hz' not in export_settings:
+                    export_settings['freq_min_hz'] = hardware_freqs.min()
+                if 'freq_max_hz' not in export_settings:
+                    export_settings['freq_max_hz'] = hardware_freqs.max()
+
+                # Подготавливаем сетку данных, используя наш универсальный метод
                 freqs, values, _ = self._prepare_parameter_data(
                     role_id=device_role,
                     param_name=param_name,
-                    settings=settings  # Передаем весь словарь настроек экспорта этого девайса
+                    settings=export_settings
                 )
 
-                # 💡 ОПРЕДЕЛЯЕМ МНОЖИТЕЛЬ ЗНАКА: читаем флаг invert_sign из конфига задачи
-                # Если invert_sign = true, то умножаем на -1.0, иначе на 1.0 (оставляем знак без изменений)
-                multiplier = -1.0 if settings.get('invert_sign', False) else 1.0
-
-                # Рассчитываем коэффициент перевода частот
+                multiplier = -1.0 if export_settings.get('invert_sign', False) else 1.0
                 freq_ratio = FrequencyConverter.get_ratio(from_unit='Hz', to_unit=target_freq_unit)
 
                 # Формируем подпапку hardware_corrections/Имя_Приемника и красивое имя файла
                 corr_dir = os.path.join(self.task_output_dir, "hardware_corrections", receiver_folder)
-                filename = self._build_informative_filename(device, rules)
+
+                # 💡 ИСПРАВЛЕНИЕ 3: Передаем имя параметра явно в метод генерации имени файла!
+                filename = self._build_informative_filename(device, param_name, rules)
                 full_output_path = os.path.join(corr_dir, filename)
 
-                # 3. Вызываем универсальный рендеринг Jinja2 шаблона
+                # Запускаем универсальный рендеринг шаблона
                 TemplateExporter.export_correction(
                     template_path=template_path,
                     output_path=full_output_path,
                     frequencies=freqs.tolist(),
                     values=values.tolist(),
                     freq_convert_ratio=freq_ratio,
-                    sign_multiplier=multiplier,  # Передаем рассчитанный множитель
+                    sign_multiplier=multiplier,
                     meta_params=rules.get('template_meta', {})
                 )
 

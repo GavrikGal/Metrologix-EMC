@@ -5,8 +5,9 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 from abc import ABC, abstractmethod
-from src.readers.universal_csv_reader import UniversalCSVReader
-from src.core.math_models import DistributionDecomposition
+# from src.readers.universal_csv_reader import UniversalCSVReader
+from src.readers.hardware_data_reader import HardwareDataReader
+from src.core.math_models import DistributionDecomposition, FrequencyConverter
 
 
 class BaseDevice(ABC):
@@ -50,35 +51,48 @@ class BaseDevice(ABC):
         self.processed_parameters[param_name] = {'freq': freqs, 'value': values, 'u_standard': u_std}
 
     def _load_from_table(self, param_name: str, cfg: dict):
-        """Данные загружаются из готовой таблицы паспорта или сертификата калибровки"""
+        """Загружает данные параметра из готовой таблицы поверки (CSV или Excel)"""
         file_path = os.path.join(self.device_dir_path, cfg.get('file_path'))
         r_set = cfg.get('reader_settings', {})
-        mapping = r_set.get('columns_mapping', {'frequency': 0, 'value': 1})
 
-        df = UniversalCSVReader.read_csv_data(
+        # Забираем маппинг колонок из конфига девайса
+        mapping = cfg.get('columns_mapping', {'frequency': 0, 'value': 1, 'uncertainty': 2})
+
+        # 💡 ИСПРАВЛЕНИЕ 1: Читаем файл целиком (use_columns=None),
+        # чтобы индексы колонок [0, 2, 3] из Excel не сдвинулись и не схлопнулись!
+        df = HardwareDataReader.read_measurement_data(
             file_path=file_path,
+            file_format=r_set.get('file_format', 'text'),
+            data_start_marker=r_set.get('data_start_marker'),
             skip_rows=r_set.get('skip_rows', 0),
-            delimiter=r_set.get('delimiter', ',')
+            delimiter=r_set.get('delimiter', ','),
+            use_columns=None,
+            nan_values=r_set.get('nan_values')
         )
 
-        freqs = df[mapping['frequency']].values
-        values = df[mapping['value']].values
+        # Извлекаем сырые массивы по историческим индексам из Excel
+        raw_freqs = df[mapping['frequency']].values.astype(float)
+        values = df[mapping['value']].values.astype(float)
 
+        # Конвертация частоты свидетельства в Герцы
+        src_freq_unit = r_set.get('file_frequency_unit', 'Hz')
+        ratio = FrequencyConverter.get_ratio(from_unit=src_freq_unit, to_unit='Hz')
+        freqs_in_hz = raw_freqs * ratio
+
+        # Обработка неопределенности
         unc_cfg = cfg.get('uncertainty', {})
         if unc_cfg.get('type') == 'constant':
-            raw_unc = np.full_like(freqs, unc_cfg.get('value', 0.0))
+            raw_unc = np.full_like(freqs_in_hz, unc_cfg.get('value', 0.0))
         else:
-            # Если неопределенность лежит в соседней колонке таблицы
-            unc_col = mapping.get('uncertainty', 2)
-            raw_unc = df[unc_col].values
+            unc_col = mapping['uncertainty']
+            raw_unc = df[unc_col].values.astype(float)
 
         u_std = DistributionDecomposition.to_standard(
-            raw_unc,
-            unc_cfg.get('distribution', 'normal'),
-            k_factor=unc_cfg.get('k_factor', 2)
+            raw_unc, unc_cfg.get('distribution', 'normal'), k_factor=unc_cfg.get('k_factor', 2)
         )
 
-        self.processed_parameters[param_name] = {'freq': freqs, 'value': values, 'u_standard': u_std}
+        self.processed_parameters[param_name] = {'freq': freqs_in_hz, 'value': values, 'u_standard': u_std}
+        print(f"[{self.name}] Параметр '{param_name}' успешно загружен (Точек: {len(freqs_in_hz)}).")
 
     def _normalize_and_align_grids(self, freqs_a: np.ndarray, data_a: dict,
                                    freqs_b: np.ndarray, data_b: dict) -> tuple[np.ndarray, dict, dict]:
@@ -138,61 +152,42 @@ class BaseDevice(ABC):
 
     def _read_and_merge_system_files(self, input_config, r_set, trace_cols) -> pd.DataFrame:
         """Служебный метод: читает файлы декад, склеивает их и учитывает индивидуальные смещения дБ"""
-        # Определяем колонки трасс для применения смещения (все, кроме колонки частоты 0)
         only_traces = [c for c in trace_cols if c != 0]
 
-        # Если в конфиге передана просто строка-путь к папке (как мы делали для чтения всех файлов)
         if isinstance(input_config, str):
             file_paths = self._collect_file_paths(input_config)
-            # Создаем список словарей по умолчанию (без смещений)
             file_items = [{'path': p, 'offset_db': 0.0} for p in file_paths]
         else:
-            # Если передан список из YAML
             file_items = []
             for item in input_config:
                 if isinstance(item, str):
-                    # Если элемент списка — обычная строка-путь
                     file_items.append({'path': item, 'offset_db': 0.0})
                 elif isinstance(item, dict):
-                    # Если элемент списка — словарь со смещением
-                    file_items.append({
-                        'path': item.get('path'),
-                        'offset_db': float(item.get('offset_db', 0.0))
-                    })
+                    file_items.append({'path': item.get('path'), 'offset_db': float(item.get('offset_db', 0.0))})
 
         dfs = []
         for item in file_items:
-            # Превращаем относительный путь в абсолютный
             full_path = os.path.join(self.device_dir_path, item['path'])
 
-            # Читаем декаду через универсальный ридер
-            df_part = UniversalCSVReader.read_csv_data(
+            # 💡 ЧИСТЫЙ И ОЧЕВИДНЫЙ ВЫЗОВ ДЛЯ СЫРЫХ ЗАМЕРОВ ТРАКТА:
+            df_part = HardwareDataReader.read_measurement_data(
                 file_path=full_path,
+                file_format=r_set.get('file_format', 'text'),
                 data_start_marker=r_set.get('data_start_marker'),
                 delimiter=r_set.get('delimiter', ','),
                 use_columns=trace_cols,
                 nan_values=r_set.get('nan_values')
             )
 
-            # 💡 ПРИМЕНЯЕМ СМЕЩЕНИЕ УРОВНЯ ГЕНЕРАТОРА (если оно задано)
             if item['offset_db'] != 0.0:
                 df_part[only_traces] = df_part[only_traces] + item['offset_db']
-                # ИСПРАВЛЕНИЕ: Используем стандартный метрологический формат :+.1f (выведет, например, +20.0)
-                print(f"[{self.name}] Применено смещение {item['offset_db']:+.1f} дБ к файлу: {os.path.basename(item['path'])}")
+                print(
+                    f"[{self.name}] Применено смещение {item['offset_db']:+.1f} дБ к файлу: {os.path.basename(item['path'])}")
 
             dfs.append(df_part)
 
-        # Склеиваем все декады в один DataFrame
-        df_merged = pd.concat(dfs, ignore_index=True)
-
-        # Сортируем по частоте (колонка 0), чтобы стыки шли по порядку
-        df_merged = df_merged.sort_values(0)
-
-        # 💡 МЕТРОЛОГИЧЕСКОЕ РЕШЕНИЕ: Убираем groupby.mean(), который искажал СКО.
-        # Вместо этого просто удаляем дубликаты частот, оставляя точку из более поздней декады (keep='last').
-        # Это сохраняет чистую дисперсию трасс без искусственного завышения неопределенности!
+        df_merged = pd.concat(dfs, ignore_index=True).sort_values(0)
         df_merged = df_merged.drop_duplicates(subset=[0], keep='last')
-
         return df_merged
 
     def _calculate_via_substitution(self, param_name: str, cfg: dict):
