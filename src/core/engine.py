@@ -1,4 +1,6 @@
 import os
+
+import pandas as pd
 import yaml
 import numpy as np
 from src.hardware.rf_cable.rf_cable import RFCableSystem
@@ -295,6 +297,66 @@ class MetrologixEngine:
         except Exception as e:
             print(f"[Engine Ошибка]: Не удалось выгрузить коррекции для оборудования: {e}")
 
+    def _calculate_total_emc_budget(self):
+        """Расчет инструментального бюджета неопределенности. Логика вывода делегирована в ExcelExporter."""
+        b_cfg = self.task_config.get('budget_range_settings', {})
+        budget_comp = self.task_config.get('budget_composition', [])
+
+        if not b_cfg or not budget_comp:
+            print("[Engine Budget] Пропуск расчета: в задаче отсутствуют настройки диапазона или состава бюджета.")
+            return
+
+        print("\n[Engine] Сборка и расчет суммарного бюджета неопределенности ЭМС...")
+
+        # Переводим границы частот задачи в системные Герцы
+        task_unit = b_cfg.get('unit', 'Hz')
+        ratio_to_hz = FrequencyConverter.get_ratio(from_unit=task_unit, to_unit='Hz')
+        f_min_hz = b_cfg.get('freq_min') * ratio_to_hz
+        f_max_hz = b_cfg.get('freq_max') * ratio_to_hz
+
+        # Строим красивую строку диапазона частот для заголовка отчета
+        freq_range_str = FrequencyConverter.format_frequency_range(f_min_hz, f_max_hz)
+
+        raw_budget_data = []
+
+        # Динамически опрашиваем устройства схемы по описанию из файла задачи
+        for item in budget_comp:
+            comp_name = item.get('component_name', 'Unknown Constituent')
+            role_id = item.get('device_role')
+            param_name = item.get('target_parameter')
+
+            device = self.active_devices.get(role_id)
+            if not device:
+                print(f"[Engine Budget] Предупреждение: Роль '{role_id}' не задействована в схеме. Пропуск.")
+                continue
+
+            # Запрашиваем метрологический паспорт максимума для полосы частот задачи
+            unc_passport = device.get_max_standard_uncertainty(param_name, f_min_hz, f_max_hz)
+
+            # Красиво мапим закон распределения (убираем путаницу)
+            dist_name = unc_passport['distribution'].upper()
+            dist_str = f"NORMAL (k={unc_passport['k_factor']})" if dist_name == 'NORMAL' else dist_name
+
+            # Накапливаем чистые сырые данные для передачи экспортеру отчетов
+            raw_budget_data.append({
+                'name': comp_name,
+                'device': f"{device.name} (S/N: {device.config.get('serial_number', 'None')})",
+                'raw_val': float(unc_passport['raw_value']),
+                'dist': dist_str,
+                'u_std': float(unc_passport['standard_uncertainty'])
+            })
+
+        # ДЕЛЕГИРУЕМ ВЫВОД РЕЗУЛЬТАТОВ СПЕЦИАЛИЗИРОВАННОМУ КЛАССУ EXCEL EXPORTER
+        from src.reports.budget_exporter import ExcelExporter
+
+        ExcelExporter.export_emc_budget(
+            output_dir=self.task_output_dir,
+            task_name=self.task_name,
+            method_name=self.task_config.get('target_method', 'EMC Method'),
+            freq_range_str=freq_range_str,
+            budget_data=raw_budget_data
+        )
+
     def run(self):
         """Главный рабочий цикл Движка"""
         print(f"\n--- Запуск задачи: {self.task_name} ---")
@@ -306,5 +368,6 @@ class MetrologixEngine:
         self._generate_all_plots()
         self._process_hardware_corrections()
 
-        print("\n[Engine] Расчет суммарного бюджета неопределенности ЭМС пропущен (заглушка).")
+        # 4. РАСЧЕТ СУММАРНОГО БЮДЖЕТА НЕОПРЕДЕЛЕННОСТИ ЭМС
+        self._calculate_total_emc_budget()
         print(f"--- Задача {self.task_name} успешно выполнена. Результаты в output/{self.task_name} ---")

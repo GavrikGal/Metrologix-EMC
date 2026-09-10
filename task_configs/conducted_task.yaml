@@ -1,8 +1,25 @@
 task_name: "Cable_Verification_Task"
+target_method: "CISPR 16-4-2 (Band B)"
+
+# ДИАПАЗОН ИССЛЕДОВАНИЯ ДЛЯ ОБЩЕГО БЮДЖЕТА
+budget_range_settings:
+  freq_min: 0.15                       # Начало полосы B (150 кГц)
+  freq_max: 30.0                       # Конец полосы B (30 МГц)
+  unit: "MHz"                          # Единица измерения частоты диапазона
 
 hardware_setup:
   receiver: "keysight_n9030b"         # Папка приемника в hardware_library
   cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
+
+# ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
+budget_composition:
+  - component_name: "Receiver Sine Wave Accuracy"
+    device_role: "receiver"
+    target_parameter: "Sine_Accuracy"
+
+  - component_name: "Cable System Attenuation"
+    device_role: "cable_system"
+    target_parameter: "S21"
 
 # ЦЕНТРАЛИЗОВАННЫЕ НАСТРОЙКИ ЭКСПОРТА КОРРЕКЦИЙ В ЗАДАЧЕ
 hardware_corrections_output:

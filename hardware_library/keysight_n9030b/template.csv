@@ -8,5 +8,5 @@ Antenna Unit,{{ antenna_unit }}
 Frequency Interpolation,{{ interpolation_type }}
 DATA
 {% for freq, val in data_points -%}
-{{ "%.4f"|format(freq) }},{{ "%.3f"|format(val) }}
+{{ "%.6f"|format(freq) }},{{ "%.3f"|format(val) }}
 {% endfor %}

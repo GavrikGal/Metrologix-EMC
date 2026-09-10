@@ -54,45 +54,37 @@ class BaseDevice(ABC):
         """Загружает данные параметра из готовой таблицы поверки (CSV или Excel)"""
         file_path = os.path.join(self.device_dir_path, cfg.get('file_path'))
         r_set = cfg.get('reader_settings', {})
-
-        # Забираем маппинг колонок из конфига девайса
         mapping = cfg.get('columns_mapping', {'frequency': 0, 'value': 1, 'uncertainty': 2})
 
-        # 💡 ИСПРАВЛЕНИЕ 1: Читаем файл целиком (use_columns=None),
-        # чтобы индексы колонок [0, 2, 3] из Excel не сдвинулись и не схлопнулись!
         df = HardwareDataReader.read_measurement_data(
-            file_path=file_path,
-            file_format=r_set.get('file_format', 'text'),
-            data_start_marker=r_set.get('data_start_marker'),
-            skip_rows=r_set.get('skip_rows', 0),
-            delimiter=r_set.get('delimiter', ','),
-            use_columns=None,
-            nan_values=r_set.get('nan_values')
+            file_path=file_path, file_format=r_set.get('file_format', 'text'),
+            skip_rows=r_set.get('skip_rows', 0), delimiter=r_set.get('delimiter', ',')
         )
 
-        # Извлекаем сырые массивы по историческим индексам из Excel
         raw_freqs = df[mapping['frequency']].values.astype(float)
         values = df[mapping['value']].values.astype(float)
 
-        # Конвертация частоты свидетельства в Герцы
+        # Конвертируем частоту в системные Герцы
         src_freq_unit = r_set.get('file_frequency_unit', 'Hz')
         ratio = FrequencyConverter.get_ratio(from_unit=src_freq_unit, to_unit='Hz')
         freqs_in_hz = raw_freqs * ratio
 
-        # Обработка неопределенности
+        # Забираем исходные настройки распределения
         unc_cfg = cfg.get('uncertainty', {})
         if unc_cfg.get('type') == 'constant':
             raw_unc = np.full_like(freqs_in_hz, unc_cfg.get('value', 0.0))
         else:
-            unc_col = mapping['uncertainty']
-            raw_unc = df[unc_col].values.astype(float)
+            raw_unc = df[mapping['uncertainty']].values.astype(float)
 
-        u_std = DistributionDecomposition.to_standard(
-            raw_unc, unc_cfg.get('distribution', 'normal'), k_factor=unc_cfg.get('k_factor', 2)
-        )
-
-        self.processed_parameters[param_name] = {'freq': freqs_in_hz, 'value': values, 'u_standard': u_std}
-        print(f"[{self.name}] Параметр '{param_name}' успешно загружен (Точек: {len(freqs_in_hz)}).")
+        # 💡 МЕТРОЛОГИЧЕСКОЕ ИЗМЕНЕНИЕ: Сохраняем в кэш СЫРЫЕ (исходные) метрологические параметры распределения
+        self.processed_parameters[param_name] = {
+            'freq': freqs_in_hz,
+            'value': values,
+            'raw_uncertainty': raw_unc,  # Исходный массив погрешностей
+            'distribution': unc_cfg.get('distribution', 'normal'),  # Исходный закон распределения
+            'k_factor': unc_cfg.get('k_factor', 2)  # Исходный коэффициент k
+        }
+        print(f"[{self.name}] Параметр '{param_name}' успешно зарегистрирован в сыром метрологическом виде.")
 
     def _normalize_and_align_grids(self, freqs_a: np.ndarray, data_a: dict,
                                    freqs_b: np.ndarray, data_b: dict) -> tuple[np.ndarray, dict, dict]:
@@ -231,14 +223,16 @@ class BaseDevice(ABC):
         self.processed_parameters[param_name] = {
             'freq': target_freqs,
             'value': calculated_values,
-            'u_standard': u_type_a
+            'raw_uncertainty': u_type_a,
+            'distribution': 'normal',
+            'k_factor': 1
         }
         print(f"[{self.name}] Успешный расчет '{param_name}'. Итоговый рабочий диапазон железа: "
               f"{target_freqs.min() / 1e6:.2f} - {target_freqs.max() / 1e9:.2f} ГГц ({len(target_freqs)} точек).")
 
     def get_parameter_vector(self, parameter_name: str, target_frequencies: np.ndarray) -> tuple[
         np.ndarray, np.ndarray]:
-        """Универсальный интерфейс для Движка с экстраполяцией и защитой от ложных округлений"""
+        """Универсальный интерфейс для Движка с динамическим расчетом стандартной неопределенности"""
         if parameter_name not in self.processed_parameters:
             raise ValueError(f"[{self.name}] Параметр '{parameter_name}' не найден.")
 
@@ -247,26 +241,72 @@ class BaseDevice(ABC):
         f_min_hardware = data['freq'].min()
         f_max_hardware = data['freq'].max()
 
-        # 💡 МЕТРОЛОГИЧЕСКИЙ ДОПУСК: 0.01% от границ для защиты от погрешности float округления np.logspace
+        # Защита от ложных округлений float на краях диапазонов
         tolerance_min = f_min_hardware * 0.0001
         tolerance_max = f_max_hardware * 0.0001
 
-        # Проверяем реальный жесткий выход за границы с учетом допуска
         if (target_frequencies.max() > (f_max_hardware + tolerance_max) or
                 target_frequencies.min() < (f_min_hardware - tolerance_min)):
-            print(f"[Метрологическое предупреждение]: Внимание! Запрошенные частоты действительно выходят за "
+            print(f"[Метрологическое предупреждение]: Запрошенные частоты выходят за "
                   f"пределы измерений '{self.name}' ({f_min_hardware / 1e6:.2f} МГц - {f_max_hardware / 1e9:.2f} ГГц). "
-                  f"Включен режим математического предсказания!")
+                  f"Включен режим экстраполяции!")
 
-        # Возвращаем интерполяцию/экстраполяцию
+        # 1. Интерполируем средние значения физической величины
         val_interp = interp1d(data['freq'], data['value'], kind='linear', fill_value="extrapolate")(target_frequencies)
-        u_interp = interp1d(data['freq'], data['u_standard'], kind='linear', fill_value="extrapolate")(
+
+        # 2. Интерполируем СЫРУЮ неопределенность прибора на целевую сетку частот
+        raw_unc_interp = interp1d(data['freq'], data['raw_uncertainty'], kind='linear', fill_value="extrapolate")(
             target_frequencies)
 
-        return val_interp, u_interp
+        # 3. 💡 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Приводим интерполированную сырую неопределенность
+        # к стандартной (k=1) в зависимости от сохраненного в объекте закона распределения
+        u_std_interp = DistributionDecomposition.to_standard(
+            value=raw_unc_interp,
+            dist_type=data['distribution'],
+            k_factor=data['k_factor']
+        )
+
+        return val_interp, u_std_interp
 
     def get_default_frequencies(self, parameter_name: str) -> np.ndarray:
         """Возвращает оригинальную (дефолтную) ось частот параметра, считанную из файлов прибора"""
         if parameter_name not in self.processed_parameters:
             raise ValueError(f"[{self.name}] Параметр '{parameter_name}' еще не обработан или отсутствует.")
         return self.processed_parameters[parameter_name]['freq']
+
+    def get_max_standard_uncertainty(self, param_name: str, f_min_hz: float, f_max_hz: float) -> dict:
+        """
+        Находит точку максимальной неопределенности внутри исследуемого диапазона частот
+        и возвращает полный метрологический паспорт этой составляющей для таблицы СИСПР.
+        """
+        if param_name not in self.processed_parameters:
+            raise ValueError(f"[{self.name}] Параметр '{param_name}' отсутствует.")
+
+        data = self.processed_parameters[param_name]
+
+        # Строим маску для выделения частот, попавших в диапазон метода задачи
+        mask = (data['freq'] >= f_min_hz) & (data['freq'] <= f_max_hz)
+
+        if not np.any(mask):
+            # Если точки прибора не попали в диапазон (например, кабель измерялся от 10 МГц, а задача от 150 кГц),
+            # берем крайнее ближайшее значение (экстраполяция одной критической точки)
+            idx = np.argmin(np.abs(data['freq'] - f_min_hz))
+            max_raw_unc = data['raw_uncertainty'][idx]
+        else:
+            # Находим МАКСИМАЛЬНУЮ сырую неопределенность внутри исследуемого диапазона частот
+            max_raw_unc = np.max(data['raw_uncertainty'][mask])
+
+        # Рассчитываем приведенное к стандарту (k=1) значение через наш модуль DistributionDecomposition
+        u_std = DistributionDecomposition.to_standard(
+            value=max_raw_unc,
+            dist_type=data['distribution'],
+            k_factor=data['k_factor']
+        )
+
+        # Возвращаем полный паспорт строки бюджета СИСПР
+        return {
+            'raw_value': max_raw_unc,
+            'distribution': data['distribution'],
+            'k_factor': data['k_factor'],
+            'standard_uncertainty': u_std
+        }
