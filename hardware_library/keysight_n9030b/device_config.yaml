@@ -3,6 +3,11 @@ device_short_id: "N9030B"
 serial_number: "MY60070596"
 device_type: "Receiver"
 
+# РАБОЧИЙ ДИАПАЗОН ПРИБОРА ПАСПОРТНЫЙ
+operating_frequency_range:
+  min_hz: 2.0                          # От 2 Гц
+  max_hz: 44000000000.0                # До 44 ГГц
+
 correction_export_rules:
   template_file: "template.csv"       # Шаблон теперь сразу имеет нужное прибору расширение
   target_freq_unit: "MHz"             # Прибор ждет частоту в МГц

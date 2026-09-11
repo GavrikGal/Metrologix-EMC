@@ -10,9 +10,14 @@ budget_range_settings:
 hardware_setup:
   receiver: "keysight_n9030b"         # Папка приемника в hardware_library
   cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
+  reading_process: "operator_reading"
 
 # ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
 budget_composition:
+  - component_name: "Receiver Reading"
+    device_role: "reading_process"
+    target_parameter: "Receiver_Reading"
+
   - component_name: "Receiver Sine Wave Accuracy"
     device_role: "receiver"
     target_parameter: "Sine_Accuracy"

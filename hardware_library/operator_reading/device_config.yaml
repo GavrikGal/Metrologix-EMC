@@ -1,0 +1,18 @@
+device_name: "Погрешность считывания показаний и нестабильность шкалы"
+device_short_id: "Operator_Reading"
+device_type: "Process_Factor"
+
+# Задаем диапазон, внутри которого оператор проводит считывание
+operating_frequency_range:
+  min_hz: 0.0                          # От 0 Гц
+  max_hz: 40000000000.0                # До 40 ГГц
+
+parameters:
+  # Наш параметр "Показание приемника"
+  Receiver_Reading:
+    source_type: "constant"
+    value: 0.0
+    uncertainty:
+      type: "constant"
+      value: 0.01                        # 0.01 дБ для цифровой шкалы
+      distribution: "rectangular"

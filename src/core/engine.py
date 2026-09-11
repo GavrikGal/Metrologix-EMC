@@ -41,6 +41,10 @@ class MetrologixEngine:
             elif role == 'receiver':
                 from src.hardware.receiver.receiver import EMCReceiver
                 self.active_devices[role] = EMCReceiver(device_dir)
+            elif role == 'reading_process':
+                # КЛАСС ПРОЦЕССА/ОПЕРАТОРА
+                from src.hardware.process.measurement_process import MeasurementProcess
+                self.active_devices[role] = MeasurementProcess(device_dir)
 
             print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
 

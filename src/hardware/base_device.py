@@ -39,15 +39,22 @@ class BaseDevice(ABC):
     # =====================================================================
 
     def _load_as_constant(self, param_name: str, cfg: dict):
-        """Параметр задан как фиксированная константа во всем диапазоне"""
-        # Генерируем фиктивную сетку для инициализации константы (от 10 Гц до 40 ГГц)
-        freqs = np.logspace(1, 10.6, num=100)
+        """Параметр задан как фиксированная константа в пределах рабочего диапазона прибора"""
+        # 💡 ИСПРАВЛЕНИЕ: Берем реальный рабочий диапазон прибора из его конфига
+        freq_range = self.config.get('operating_frequency_range', {})
+
+        # Если диапазон не задан в YAML, используем безопасный дефолт (10 Гц - 40 ГГц)
+        f_min = float(freq_range.get('min_hz', 10.0))
+        f_max = float(freq_range.get('max_hz', 40e9))
+
+        # Строим сетку частот (100 точек вполне достаточно для константной линии)
+        freqs = np.logspace(np.log10(f_min), np.log10(f_max), num=100)
         values = np.full_like(freqs, cfg.get('value', 0.0))
 
         unc_cfg = cfg.get('uncertainty', {})
         raw_unc = np.full_like(freqs, unc_cfg.get('value', 0.0))
 
-        # 💡 ИСПРАВЛЕНИЕ: Сохраняем в память строго в новом сыром метрологическом формате
+        # Сохраняем в кэш
         self.processed_parameters[param_name] = {
             'freq': freqs,
             'value': values,
@@ -55,7 +62,8 @@ class BaseDevice(ABC):
             'distribution': unc_cfg.get('distribution', 'rectangular'),
             'k_factor': unc_cfg.get('k_factor', 2)
         }
-        print(f"[{self.name}] Константный параметр '{param_name}' успешно зарегистрирован.")
+        print(f"[{self.name}] Константный параметр '{param_name}' успешно зарегистрирован в диапазоне "
+              f"{f_min / 1e6:.2f} MHz - {f_max / 1e9:.2f} GHz.")
 
     def _load_from_table(self, param_name: str, cfg: dict):
         """Загружает данные параметра из готовой таблицы поверки (CSV или Excel)"""

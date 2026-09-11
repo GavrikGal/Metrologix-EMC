@@ -3,6 +3,11 @@ device_short_id: "SUCOFLEX 1.5m+10m"
 serial_number: "SN-99999"             # Добавили серийный номер кабеля
 device_type: "Cable"
 
+# РАБОЧИЙ ДИАПАЗОН ПРИБОРА ПАСПОРТНЫЙ
+operating_frequency_range:
+  min_hz: 0.0                          # От 0 Гц
+  max_hz: 40000000000.0                # До 40 ГГц
+
 # Указываем, в каких единицах записана частота в сырых файлах на диске
 hardware_data_info:
   frequency_unit: "Hz"                # Анализатор Keysight пишет в Гц (100000, 100900...)
