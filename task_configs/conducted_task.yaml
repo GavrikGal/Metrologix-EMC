@@ -17,9 +17,20 @@ budget_composition:
     device_role: "receiver"
     target_parameter: "Sine_Accuracy"
 
+  - component_name: "Receiver Pulse Amplitude Response"
+    device_role: "receiver"
+    target_parameter: "Pulse_Amplitude_Response"
+
+  - component_name: "Receiver Pulse Repetition Response"
+    device_role: "receiver"
+    target_parameter: "Pulse_Repetition_Frequency_Response"
+
   - component_name: "Cable System Attenuation"
     device_role: "cable_system"
     target_parameter: "S21"
+
+
+
 
 # ЦЕНТРАЛИЗОВАННЫЕ НАСТРОЙКИ ЭКСПОРТА КОРРЕКЦИЙ В ЗАДАЧЕ
 hardware_corrections_output:

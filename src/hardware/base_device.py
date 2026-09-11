@@ -40,15 +40,22 @@ class BaseDevice(ABC):
 
     def _load_as_constant(self, param_name: str, cfg: dict):
         """Параметр задан как фиксированная константа во всем диапазоне"""
-        # Генерируем базовую сетку от 100 кГц до 40 ГГц для инициализации
-        freqs = np.logspace(5, 10.6, num=500)
+        # Генерируем фиктивную сетку для инициализации константы (от 10 Гц до 40 ГГц)
+        freqs = np.logspace(1, 10.6, num=100)
         values = np.full_like(freqs, cfg.get('value', 0.0))
 
         unc_cfg = cfg.get('uncertainty', {})
         raw_unc = np.full_like(freqs, unc_cfg.get('value', 0.0))
-        u_std = DistributionDecomposition.to_standard(raw_unc, unc_cfg.get('distribution', 'rectangular'))
 
-        self.processed_parameters[param_name] = {'freq': freqs, 'value': values, 'u_standard': u_std}
+        # 💡 ИСПРАВЛЕНИЕ: Сохраняем в память строго в новом сыром метрологическом формате
+        self.processed_parameters[param_name] = {
+            'freq': freqs,
+            'value': values,
+            'raw_uncertainty': raw_unc,
+            'distribution': unc_cfg.get('distribution', 'rectangular'),
+            'k_factor': unc_cfg.get('k_factor', 2)
+        }
+        print(f"[{self.name}] Константный параметр '{param_name}' успешно зарегистрирован.")
 
     def _load_from_table(self, param_name: str, cfg: dict):
         """Загружает данные параметра из готовой таблицы поверки (CSV или Excel)"""

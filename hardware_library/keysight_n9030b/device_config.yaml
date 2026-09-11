@@ -6,7 +6,6 @@ device_type: "Receiver"
 correction_export_rules:
   template_file: "template.csv"       # Шаблон теперь сразу имеет нужное прибору расширение
   target_freq_unit: "MHz"             # Прибор ждет частоту в МГц
-
   template_meta:
     model_name: "N9030B"
     freq_unit: "MHz"
@@ -15,13 +14,12 @@ correction_export_rules:
 
 # ОПИСАНИЕ СВИДЕТЕЛЬСТВА О ПОВЕРКЕ ПРИЕМНИКА
 parameters:
-  # Синусоидальная точность (Амплитудная погрешность)
+  # 1. Синусоидальная точность (таблица Excel из свидетельства)
   Sine_Accuracy:
     source_type: "table"
     file_path: "Абсолютная погрешность измерения уровня мощности (Атт 10дБ) от 25.08.2026.xlsx" # Имя эксель-файла в папке прибора
 
-    # Говорим коду брать строго эти колонки из оригинального Excel
-    columns_mapping:
+    columns_mapping:    # Говорим коду брать строго эти колонки из оригинального Excel
       frequency: 0      # Колонка 0 - Частота, МГц
       value: 2          # Колонка 2 - Погрешность измерения уровня мощности, дБ
       uncertainty: 3    # Колонка 3 - Расширенная неопределенность, дБ
@@ -30,9 +28,26 @@ parameters:
       file_format: "excel"              # Говорим ридеру открыть Excel
       skip_rows: 1                      # Пропускаем шапку с названиями колонок
       file_frequency_unit: "MHz"        # Важно! В файле частота указана в МГц!
-      nan_values: []
 
     uncertainty:
       type: "table"                     # Неопределенность берем из самой таблицы
       distribution: "normal"            # В свидетельствах распределение всегда нормальное
       k_factor: 2                       # Расширенная неопределенность с коэффициентом k=2
+
+  # 2. Амплитудная импульсная характеристика (По соответствию СИСПР 16-1-1)
+  Pulse_Amplitude_Response:
+    source_type: "constant"
+    value: 0.0                          # Поправки нет (0 дБ)
+    uncertainty:
+      type: "constant"
+      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
+
+  # 3. Характеристика от частоты повторения импульсов
+  Pulse_Repetition_Frequency_Response:
+    source_type: "constant"
+    value: 0.0                          # Поправки нет (0 дБ)
+    uncertainty:
+      type: "constant"
+      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
