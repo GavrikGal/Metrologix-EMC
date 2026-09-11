@@ -368,6 +368,6 @@ class MetrologixEngine:
         self._generate_all_plots()
         self._process_hardware_corrections()
 
-        # 4. РАСЧЕТ СУММАРНОГО БЮДЖЕТА НЕОПРЕДЕЛЕННОСТИ ЭМС
+        # 4. РАСЧЕТ СУММАРНОГО БЮДЖЕТА НЕОПРЕДЕЛЕННОСТИ ЭМС [1, 2, 3]
         self._calculate_total_emc_budget()
         print(f"--- Задача {self.task_name} успешно выполнена. Результаты в output/{self.task_name} ---")
