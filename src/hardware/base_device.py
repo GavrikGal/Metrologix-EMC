@@ -39,22 +39,24 @@ class BaseDevice(ABC):
     # =====================================================================
 
     def _load_as_constant(self, param_name: str, cfg: dict):
-        """Параметр задан как фиксированная константа в пределах рабочего диапазона прибора"""
-        # 💡 ИСПРАВЛЕНИЕ: Берем реальный рабочий диапазон прибора из его конфига
+        """Параметр задан как фиксированная константа в пределах рабочего диапазон прибора"""
         freq_range = self.config.get('operating_frequency_range', {})
 
-        # Если диапазон не задан в YAML, используем безопасный дефолт (10 Гц - 40 ГГц)
-        f_min = float(freq_range.get('min_hz', 10.0))
+        # Извлекаем границы. Если они опущены или равны 0, ставим безопасные 9 кГц - 40 ГГц
+        f_min = float(freq_range.get('min_hz', 9000.0))
         f_max = float(freq_range.get('max_hz', 40e9))
 
-        # Строим сетку частот (100 точек вполне достаточно для константной линии)
-        freqs = np.logspace(np.log10(f_min), np.log10(f_max), num=100)
+        if f_min <= 0:
+            f_min = 9000.0  # Защита от нулевой частоты для лог-шкал визуализатора
+
+        # 💡 ИСПРАВЛЕНИЕ: Используем np.linspace вместо np.logspace для 100% защиты от деления на ноль
+        freqs = np.linspace(f_min, f_max, num=100)
         values = np.full_like(freqs, cfg.get('value', 0.0))
 
         unc_cfg = cfg.get('uncertainty', {})
         raw_unc = np.full_like(freqs, unc_cfg.get('value', 0.0))
 
-        # Сохраняем в кэш
+        # Сохраняем в кэш девайса
         self.processed_parameters[param_name] = {
             'freq': freqs,
             'value': values,
@@ -103,15 +105,10 @@ class BaseDevice(ABC):
 
     def _normalize_and_align_grids(self, freqs_a: np.ndarray, data_a: dict,
                                    freqs_b: np.ndarray, data_b: dict) -> tuple[np.ndarray, dict, dict]:
-        """
-        Выравнивает частотные сетки, ограничивая итоговый диапазон строго зоной
-        пересечения (intersection), защищая края от разлета неопределенности.
-        """
-        # Находим строго общий диапазон частот, где данные есть у ОБЕИХ систем
+        """Выравнивает частотные сетки, включая интерполяцию многомерных матриц сырых трасс"""
         min_freq = max(freqs_a.min(), freqs_b.min())
         max_freq = min(freqs_a.max(), freqs_b.max())
 
-        # Выбираем, какая сетка подробнее внутри этого общего диапазона
         if len(freqs_a) >= len(freqs_b):
             mask = (freqs_a >= min_freq) & (freqs_a <= max_freq)
             target_freqs = freqs_a[mask]
@@ -119,16 +116,19 @@ class BaseDevice(ABC):
             mask = (freqs_b >= min_freq) & (freqs_b <= max_freq)
             target_freqs = freqs_b[mask]
 
-        # Интерполируем строго внутри гарантированных физических границ (bounds_error=True保護)
-        # Больше никакой слепой экстраполяции для векторов средних и СКО!
+        # Универсальная интерполяция векторов и матриц (axis=0 позволяет SciPy интерполировать матрицы трасс)
         aligned_a = {
             'mean': interp1d(freqs_a, data_a['mean'], kind='linear', bounds_error=True)(target_freqs),
-            'std': interp1d(freqs_a, data_a['std'], kind='linear', bounds_error=True)(target_freqs)
+            'std': interp1d(freqs_a, data_a['std'], kind='linear', bounds_error=True)(target_freqs),
+            'all_traces': interp1d(freqs_a, data_a['all_traces'], kind='linear', axis=0, bounds_error=True)(
+                target_freqs)
         }
 
         aligned_b = {
             'mean': interp1d(freqs_b, data_b['mean'], kind='linear', bounds_error=True)(target_freqs),
-            'std': interp1d(freqs_b, data_b['std'], kind='linear', bounds_error=True)(target_freqs)
+            'std': interp1d(freqs_b, data_b['std'], kind='linear', bounds_error=True)(target_freqs),
+            'all_traces': interp1d(freqs_b, data_b['all_traces'], kind='linear', axis=0, bounds_error=True)(
+                target_freqs)
         }
 
         return target_freqs, aligned_a, aligned_b
@@ -198,34 +198,37 @@ class BaseDevice(ABC):
         return df_merged
 
     def _calculate_via_substitution(self, param_name: str, cfg: dict):
-        """Модернизированный метод замещения с поддержкой папок и списков файлов"""
+        """Модернизированный метод замещения: рассчитывает физику и кэширует сырые трассы в памяти"""
         r_set = cfg.get('reader_settings', {})
         trace_cols = r_set.get('use_columns', )
-
-        # Колонки для расчета средних (все, кроме колонки частоты, которая идет под индексом 0)
         only_traces = [c for c in trace_cols if c != 0]
         n_traces = len(only_traces)
 
-        # Автоматически собираем и читаем данные из папок или списков
-        df_sys1 = self._read_and_merge_system_files(cfg['system1_baseline'], r_set, trace_cols)
-        df_sys2 = self._read_and_merge_system_files(cfg['system2_with_cable'], r_set, trace_cols)
+        # 1. Читаем и склеиваем файлы декад (здесь еще нет группировки)
+        df_sys1_raw = self._read_and_merge_system_files(cfg['system1_baseline'], r_set, trace_cols)
+        df_sys2_raw = self._read_and_merge_system_files(cfg['system2_with_cable'], r_set, trace_cols)
 
-        # 💡 ИСПРАВЛЕНИЕ: Вытаскиваем строго первую колонку (индекс 0) как одномерный вектор частот
-        # Свойство .values от pandas Series гарантированно возвращает одномерный массив (1D array)
-        freqs_1 = df_sys1[0].values
-        freqs_2 = df_sys2[0].values
+        # 💡 ИСПРАВЛЕНИЕ: Добавлен индекс [0] для поиска дубликатов по колонке частоты
+        df_sys1_clean = df_sys1_raw.drop_duplicates(subset=[0], keep='last').sort_values(0)
+        df_sys2_clean = df_sys2_raw.drop_duplicates(subset=[0], keep='last').sort_values(0)
 
-        # Собираем расчетные метрики (среднее и СКО) по трассам измерений
+        # Переводим в массивы частот
+        freqs_1 = df_sys1_clean[0].values
+        freqs_2 = df_sys2_clean[0].values
+
+        # Собираем первичные расчетные метрики по трассам измерений
         data_1 = {
-            'mean': df_sys1[only_traces].mean(axis=1).values,
-            'std': df_sys1[only_traces].std(axis=1, ddof=1).values
+            'mean': df_sys1_clean[only_traces].mean(axis=1).values,
+            'std': df_sys1_clean[only_traces].std(axis=1, ddof=1).values,
+            'all_traces': df_sys1_clean[only_traces].values  # Кэшируем матрицу трасс Системы 1
         }
         data_2 = {
-            'mean': df_sys2[only_traces].mean(axis=1).values,
-            'std': df_sys2[only_traces].std(axis=1, ddof=1).values
+            'mean': df_sys2_clean[only_traces].mean(axis=1).values,
+            'std': df_sys2_clean[only_traces].std(axis=1, ddof=1).values,
+            'all_traces': df_sys2_clean[only_traces].values  # Кэшируем матрицу трасс Системы 2
         }
 
-        # Выравниваем частотные сетки (метод принимает одномерные массивы freqs_1 и freqs_2)
+        # Выравниваем частотные сетки
         target_freqs, aligned_1, aligned_2 = self._normalize_and_align_grids(freqs_1, data_1, freqs_2, data_2)
 
         # Физический расчет затухания и неопределенности типа А
@@ -234,16 +237,17 @@ class BaseDevice(ABC):
         sem_2 = aligned_2['std'] / np.sqrt(n_traces)
         u_type_a = np.sqrt(sem_1 ** 2 + sem_2 ** 2)
 
-        # Сохраняем в кэш девайса
+        # 💡 ИСПРАВЛЕНИЕ: Сохраняем в кэш ВСЕ данные, включая выровненные матрицы трасс обеих систем!
         self.processed_parameters[param_name] = {
             'freq': target_freqs,
             'value': calculated_values,
             'raw_uncertainty': u_type_a,
             'distribution': 'normal',
-            'k_factor': 1
+            'k_factor': 1,
+            'sys1_traces': aligned_1['all_traces'],  # Теперь они лежат в памяти!
+            'sys2_traces': aligned_2['all_traces']
         }
-        print(f"[{self.name}] Успешный расчет '{param_name}'. Итоговый рабочий диапазон железа: "
-              f"{target_freqs.min() / 1e6:.2f} - {target_freqs.max() / 1e9:.2f} ГГц ({len(target_freqs)} точек).")
+        print(f"[{self.name}] Параметр '{param_name}' успешно рассчитан и полностью кэширован в ОЗУ.")
 
     def get_parameter_vector(self, parameter_name: str, target_frequencies: np.ndarray) -> tuple[
         np.ndarray, np.ndarray]:
@@ -324,4 +328,49 @@ class BaseDevice(ABC):
             'distribution': data['distribution'],
             'k_factor': data['k_factor'],
             'standard_uncertainty': u_std
+        }
+
+    def get_raw_measurement_slice(self, param_name: str, f_min_hz: float, f_max_hz: float, points_count: int) -> dict:
+        """
+        МЕТРОЛОГИЧЕСКИЙ МЕТОД: Извлекает из памяти прибора реальные прореженные точки,
+        включая сырые трассы, средние значения Системы 1 и Системы 2 для протокола.
+        """
+        if param_name not in self.processed_parameters:
+            raise ValueError(f"[{self.name}] Параметр '{param_name}' отсутствует.")
+
+        data = self.processed_parameters[param_name]
+        freqs_hz = data['freq']
+
+        # Находим индексы реальных точек, попавших в диапазон подграфика
+        mask = (freqs_hz >= f_min_hz) & (freqs_hz <= f_max_hz)
+
+        # 💡 ИСПРАВЛЕНИЕ: Жестко извлекаем одномерный массив индексов [0]
+        valid_indices = np.where(mask)[0]
+
+        if len(valid_indices) == 0:
+            raise ValueError(
+                f"[{self.name}] В диапазоне {f_min_hz / 1e6:.2f}-{f_max_hz / 1e6:.2f} МГц нет реальных точек.")
+
+        # Умное прореживание индексов без интерполяции
+        if len(valid_indices) <= points_count:
+            chosen_indices = valid_indices
+        else:
+            # Выбираем ровно points_count индексов с равным шагом
+            idx_selection = np.linspace(0, len(valid_indices) - 1, num=points_count, dtype=int)
+            chosen_indices = valid_indices[idx_selection]
+
+        # Рассчитываем средние значения Системы 1 и Системы 2 для выбранных точек
+        # Так как матрицы трасс уже выровнены и лежат в кэше, просто берем среднее по строкам (axis=1)
+        sys1_means = np.mean(data['sys1_traces'][chosen_indices], axis=1)
+        sys2_means = np.mean(data['sys2_traces'][chosen_indices], axis=1)
+
+        return {
+            'freq_hz': freqs_hz[chosen_indices],
+            'values_db': data['value'][chosen_indices],
+            'raw_uncertainty_db': data['raw_uncertainty'][chosen_indices],
+            'sys1_traces': data['sys1_traces'][chosen_indices],
+            'sys2_traces': data['sys2_traces'][chosen_indices],
+            # 💡 ДОБАВЛЯЕМ ПРОМЕЖУТОЧНЫЕ РАСЧЕТЫ СРЕДНИХ ЗНАЧЕНИЙ СИСТЕМ
+            'sys1_mean_db': sys1_means,
+            'sys2_mean_db': sys2_means
         }

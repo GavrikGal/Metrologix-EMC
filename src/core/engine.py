@@ -124,54 +124,81 @@ class MetrologixEngine:
 
         return frequencies, y_values, u_standard
 
-    def _generate_all_plots(self):
-        """Выделенный метод обработки и вывода графиков, полностью синхронизированный с новым интерфейсом сеток"""
-        plots_cfg = self.task_config.get('plots_output', {})
-        if not plots_cfg.get('generate_plots', False) or not self.active_devices:
+    def _generate_protocol_materials(self):
+        """Универсальный метод генерации отчетных материалов протокола (графиков и таблиц) по кастомным единицам"""
+        proto_cfg = self.task_config.get('protocol_output', {})
+        if not proto_cfg or not self.active_devices:
             return
 
-        print("\n[Engine] Начало генерации графиков...")
-        for item in plots_cfg.get('items', []):
+        print("\n[Engine] Начало формирования отчетных материалов протокола...")
+        gen_plots = proto_cfg.get('generate_plots', False)
+        gen_tables = proto_cfg.get('generate_data_tables', False)
+
+        # Импортируем наши разделенные классы отчетов
+        from src.reports.visualizer import Visualizer
+        from src.reports.protocol_table_exporter import ProtocolTableExporter
+
+        for item in proto_cfg.get('items', []):
             role_id = item.get('device_id')
-            param_name = item.get('parameter')
+            param_name = item.get('target_parameter')  # 💡 Извлекаем параметр динамически из задачи!
             show_unc = item.get('show_uncertainty', True)
 
             device = self.active_devices.get(role_id)
             if not device:
-                print(f"[Engine] Предупреждение: не могу нарисовать график, роль '{role_id}' не задействована.")
                 continue
 
             for sub in item.get('sub_plots', []):
+                # 💡 УМНЫЙ ПЕРЕВОД ЕДИНИЦ ДЛЯ КАЖДОГО ПОДГРАФИКА ИНДИВИДУАЛЬНО
+                sub_unit = sub.get('unit', 'Hz')
+                ratio_to_hz = FrequencyConverter.get_ratio(from_unit=sub_unit, to_unit='Hz')
+
+                f_min_hz = float(sub.get('freq_min')) * ratio_to_hz
+                f_max_hz = float(sub.get('freq_max')) * ratio_to_hz
+
+                # Генерируем красивую строку диапазона частот для имени файла через наш Converter
+                freq_range_str = FrequencyConverter.format_frequency_range(f_min_hz, f_max_hz)
+
+                # 💡Передаем в метод f_min_hz и f_max_hz текущего поддиапазона среза
+                filename_base = self._build_informative_filename(device, param_name, f_min_hz, f_max_hz)
+
+                # Формируем итоговое красивое имя, добавляя суффикс (title)
+                safe_title = sub.get('title').replace(" ", "_").replace("-", "")
+                final_filename = f"{filename_base} - {safe_title}"
+
                 try:
-                    # 💡 ИСПРАВЛЕНИЕ: Формируем временный словарь настроек сетки прямо из подграфика,
-                    # чтобы наш новый метод _prepare_parameter_data отработал корректно!
-                    grid_settings = {
-                        'frequency_grid_type': 'by_points_count',  # График всегда строим по точкам
-                        'scale_type': sub.get('x_scale', 'linear'),
-                        'freq_min_hz': sub.get('freq_min_hz'),
-                        'freq_max_hz': sub.get('freq_max_hz'),
-                        'points_count': 400  # 400 точек для идеальной плавности на экране
-                    }
+                    # 💥 АКТИВИРУЕМ ГРАФИКИ
+                    if gen_plots:
+                        freqs_plot, values_plot, u_std_plot = self._prepare_parameter_data(
+                            role_id=role_id, param_name=param_name,
+                            settings={'frequency_grid_type': 'by_points_count',
+                                      'scale_type': sub.get('x_scale', 'linear'),
+                                      'freq_min_hz': f_min_hz, 'freq_max_hz': f_max_hz, 'points_count': 400}
+                        )
+                        Visualizer.draw_subplot(
+                            output_dir=self.task_output_dir, device_name=device.name, filename=final_filename,
+                            freqs_hz=freqs_plot, values=values_plot, u_std=u_std_plot,
+                            sub_cfg=sub, show_unc=show_unc
+                        )
 
-                    # Передаем словарь в обновленный метод
-                    freqs, values, u_std = self._prepare_parameter_data(
-                        role_id=role_id,
-                        param_name=param_name,
-                        settings=grid_settings
-                    )
+                    # АКТИВИРУЕМ ЖИВЫЕ ТАБЛИЦЫ ПРОТОКОЛА (Строго без интерполяции)
+                    if gen_tables and 'table_points_count' in sub:
+                        pts_count = int(sub.get('table_points_count', 30))
 
-                    # Передаем чистые векторы Визуализатору
-                    Visualizer.draw_subplot(
-                        task_output_dir=self.task_output_dir,
-                        device_name=device.name,
-                        freqs=freqs,
-                        values=values,
-                        u_std=u_std,
-                        sub_cfg=sub,
-                        show_unc=show_unc
-                    )
+                        raw_slice = device.get_raw_measurement_slice(
+                            param_name=param_name, f_min_hz=f_min_hz, f_max_hz=f_max_hz, points_count=pts_count
+                        )
+
+                        # 💡 ИСПРАВЛЕНИЕ: Передаем param_name последним аргументом!
+                        ProtocolTableExporter.export_raw_slice(
+                            output_dir=self.task_output_dir,
+                            filename=final_filename,
+                            raw_slice_data=raw_slice,
+                            target_unit=sub_unit,
+                            param_name=param_name  # Передаем динамическое имя параметра
+                        )
+
                 except Exception as e:
-                    print(f"[Engine] Ошибка визуализации подграфика '{sub.get('title')}': {e}")
+                    print(f"[Engine] Ошибка формирования материалов для диапазона '{sub.get('title')}': {e}")
 
     def _get_receiver_export_rules(self, receiver_folder: str) -> tuple[dict, str, dict]:
         """Вспомогательный метод: загружает и валидирует правила экспорта приемника"""
@@ -193,35 +220,28 @@ class MetrologixEngine:
 
         return rules, rx_dir, rx_cfg
 
-    def _build_informative_filename(self, device, param_name: str, rules_cfg: dict) -> str:
+    def _build_informative_filename(self, device, param_name: str, f_min_hz: float, f_max_hz: float) -> str:
         """
-        Генерирует строгое, компактное и красивое имя файла по ГОСТ-шаблону:
-        'Device_Type, Short_ID №SN (Частотный диапазон).ext'
+        Генерирует базовое имя файла по ГОСТ-шаблону:
+        'Device_Type, Short_ID №SN (Текущий диапазон частот среза)' без расширения.
         """
         dev_cfg = device.config
 
-        # Собираем базовую информацию о приборе
+        # Собираем текстовую информацию о приборе
         dev_type = dev_cfg.get('device_type', 'Device')
         short_id = dev_cfg.get('device_short_id', 'Unknown')
         sn_suffix = f" №{dev_cfg['serial_number']}" if 'serial_number' in dev_cfg else ""
 
         base_name = f"{dev_type}, {short_id}{sn_suffix}"
 
-        # 💡 ИСПРАВЛЕНИЕ 1: Извлекаем физические границы строго для текущего ОБРАБАТЫВАЕМОГО параметра
-        freqs_hz = device.processed_parameters[param_name]['freq']
-        f_min_hz = freqs_hz.min()
-        f_max_hz = freqs_hz.max()
-
-        # 💡 ИСПРАВЛЕНИЕ 2: Используем умный автоматический конвертер для красивой строки диапазона
+        # 💡 ИСПРАВЛЕНИЕ: Используем УМНЫЙ конвертер для КРАСИВОЙ строки ТЕКУЩЕГО диапазона частот,
+        # который передан из конкретного поддиапазона задачи, а не всего диапазона железа!
         freq_range_str = FrequencyConverter.format_frequency_range(f_min_hz, f_max_hz)
 
-        # Автоматически подтягиваем расширение из имени файла шаблона
-        _, ext = os.path.splitext(rules_cfg.get('template_file', '.csv'))
+        # Результат: "Cable, Cable №SN-99999 (150.00 kHz - 30.00 MHz)"
+        filename = f"{base_name} ({freq_range_str})"
 
-        # Итог: "Cable, Cable №SN-99999 (0.10 MHz - 40.00 GHz).csv" или "Receiver, N9030B (0.00 MHz - 37.50 GHz).csv"
-        filename = f"{base_name} ({freq_range_str}){ext}"
-
-        # Очистка от запрещенных символов файловой системы
+        # Очистка от запрещенных символов файловых систем
         for char in ['*', ':', '"', '<', '>', '|', '?']:
             filename = filename.replace(char, '')
         return filename
@@ -283,9 +303,17 @@ class MetrologixEngine:
                 # Формируем подпапку hardware_corrections/Имя_Приемника и красивое имя файла
                 corr_dir = os.path.join(self.task_output_dir, "hardware_corrections", receiver_folder)
 
-                # 💡 ИСПРАВЛЕНИЕ 3: Передаем имя параметра явно в метод генерации имени файла!
-                filename = self._build_informative_filename(device, param_name, rules)
-                full_output_path = os.path.join(corr_dir, filename)
+                # Извлекаем физические границы всего диапазона железа из кэша
+                hardware_freqs = device.processed_parameters[param_name]['freq']
+                f_hardware_min = hardware_freqs.min()
+                f_hardware_max = hardware_freqs.max()
+
+                # Извлекаем расширение из имени файла шаблона (например, .csv)
+                _, ext = os.path.splitext(rules.get('template_file', '.csv'))
+
+                # 💡 ИСПРАВЛЕНИЕ: Передаем границы всего доступного диапазона железа
+                filename_base = self._build_informative_filename(device, param_name, f_hardware_min, f_hardware_max)
+                full_output_path = os.path.join(corr_dir, f"{filename_base}{ext}")
 
                 # Запускаем универсальный рендеринг шаблона
                 TemplateExporter.export_correction(
@@ -362,16 +390,22 @@ class MetrologixEngine:
         )
 
     def run(self):
-        """Главный рабочий цикл Движка"""
+        """Главный рабочий цикл Движка — строго последовательный и изолированный"""
         print(f"\n--- Запуск задачи: {self.task_name} ---")
+
+        # 1. Собираем измерительную схему
         self.build_measurement_system()
 
+        # 2. Запускаем расчет физики внутренних данных приборов (СТРОГО ОДИН ЦИКЛ)
+        print("\n[Engine] Расчет и загрузка метрологических параметров оборудования...")
         for role, device in self.active_devices.items():
             device.process_device_data()
 
-        self._generate_all_plots()
+        # 3. 💡 ИСПРАВЛЕНИЕ: Вызываем материалы протокола строго ПОСЛЕ завершения всех расчетов приборов!
+        self._generate_protocol_materials()
+
+        # 4. Выгружаем файлы коррекций для флешки анализатора
         self._process_hardware_corrections()
 
-        # 4. РАСЧЕТ СУММАРНОГО БЮДЖЕТА НЕОПРЕДЕЛЕННОСТИ ЭМС [1, 2, 3]
+        # 5. Расчет суммарного инструментального бюджета неопределенности ЭМС по СИСПР
         self._calculate_total_emc_budget()
-        print(f"--- Задача {self.task_name} успешно выполнена. Результаты в output/{self.task_name} ---")

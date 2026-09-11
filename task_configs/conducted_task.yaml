@@ -101,50 +101,33 @@ hardware_corrections_output:
 
 
 
-# Настройки графиков
-plots_output:
+# Блок формирования материалов отчетного протокола
+protocol_output:
   generate_plots: true
+  generate_data_tables: true          # ВКЛЮЧАЕМ ГЕНЕРАЦИЮ ТАБЛИЦ ДЛЯ ПРОТОКОЛА
   items:
     - device_id: "cable_system"       # Ссылаемся на ключ из hardware_setup (cable_system??) (Cable_11m??)
-      parameter: "S21"
+      target_parameter: "S21"
       show_uncertainty: true
       sub_plots:
-        - title: "SUCOFLEX 11m - 100кГц...1МГц (Linear)"
-          freq_min_hz: 100000         # 100 кГц
-          freq_max_hz: 1000000        # 1 МГц
+        - title: "SUCOFLEX 11m (low)"
+          unit: "MHz"
+          freq_min: 0.15         # 150 кГц
+          freq_max: 30.0         # 30 МГц
           x_scale: "linear"              # "log" / "linear"
           show_limit_line: true
           limit_value_db: -1.0
+          table_points_count: 30       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
-        - title: "SUCOFLEX 11m - 1МГц...10МГц (Linear)"
-          freq_min_hz: 1000000        # 1 МГц
-          freq_max_hz: 10000000       # 10 МГц
+        - title: "SUCOFLEX 11m (high)"
+          unit: "GHz"
+          freq_min: 0.03         # 30 МГц
+          freq_max: 40.0         # 40 ГГц
           x_scale: "linear"
           show_limit_line: false
+          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
-        - title: "SUCOFLEX 11m - 10МГц...100МГц (Linear)"
-          freq_min_hz: 10000000        # 10 МГц
-          freq_max_hz: 100000000       # 100 МГц
-          x_scale: "linear"
-          show_limit_line: false
 
-        - title: "SUCOFLEX 11m - 100МГц...1000МГц (Linear)"
-          freq_min_hz: 100000000        # 100 МГц
-          freq_max_hz: 1000000000       # 1000 МГц
-          x_scale: "linear"
-          show_limit_line: false
-
-        - title: "SUCOFLEX 11m - 1ГГц...10ГГц (Linear)"
-          freq_min_hz: 1000000000        # 1000 МГц
-          freq_max_hz: 10000000000       # 10000 МГц
-          x_scale: "linear"
-          show_limit_line: false
-
-        - title: "SUCOFLEX 11m - 10ГГц...40ГГц (Linear)"
-          freq_min_hz: 10000000000        # 10000 МГц
-          freq_max_hz: 40000000000        # 40000 МГц
-          x_scale: "linear"
-          show_limit_line: false
 
 #        - title: "SUCOFLEX 11m - 10МГц...1ГГц (Linear)"
 #          freq_min_hz: 10000000          # 10 МГц

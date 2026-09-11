@@ -14,5 +14,5 @@ parameters:
     value: 0.0
     uncertainty:
       type: "constant"
-      value: 0.01                        # 0.01 дБ для цифровой шкалы
+      value: 0.01                        # 0.01 дБ для цифровой шкалы (на показателях два знака после запятой)
       distribution: "rectangular"
