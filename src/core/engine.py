@@ -174,10 +174,17 @@ class MetrologixEngine:
                                       'scale_type': sub.get('x_scale', 'linear'),
                                       'freq_min_hz': f_min_hz, 'freq_max_hz': f_max_hz, 'points_count': 400}
                         )
+
+                        # 💡 ИСПРАВЛЕНИЕ: Убрали filename, так как Visualizer генерирует его сам!
                         Visualizer.draw_subplot(
-                            output_dir=self.task_output_dir, device_name=device.name, filename=final_filename,
-                            freqs_hz=freqs_plot, values=values_plot, u_std=u_std_plot,
-                            sub_cfg=sub, show_unc=show_unc
+                            output_dir=self.task_output_dir,
+                            device_config=device.config,
+                            param_name=param_name,
+                            freqs_hz=freqs_plot,
+                            values=values_plot,
+                            u_std=u_std_plot,
+                            sub_cfg=sub,
+                            show_unc=show_unc
                         )
 
                     # АКТИВИРУЕМ ЖИВЫЕ ТАБЛИЦЫ ПРОТОКОЛА (Строго без интерполяции)
