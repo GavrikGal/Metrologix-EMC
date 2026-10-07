@@ -39,6 +39,14 @@ budget_composition:
     device_role: "lisn"
     target_parameter: "Correction_Factor"
 
+  - component_name: "LISN Impedance"
+    device_role: "lisn"
+    target_parameter: "Impedance"
+
+  - component_name: "LISN Frequency Interpolation"
+    device_role: "lisn"
+    target_parameter: "Frequency_Interpolation"
+
 
 
 
