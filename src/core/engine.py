@@ -8,6 +8,7 @@ from src.hardware.rf_cable.rf_cable import RFCableSystem
 from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.process.measurement_process import MeasurementProcess
 from src.core.math_models import FrequencyConverter
+from src.reports.template_exporter import TemplateExporter
 
 
 class MetrologixEngine:
@@ -208,24 +209,24 @@ class MetrologixEngine:
                 except Exception as e:
                     print(f"[Engine] Ошибка формирования материалов для диапазона '{sub.get('title')}': {e}")
 
-    def _get_receiver_export_rules(self, receiver_folder: str) -> tuple[dict, str, dict]:
-        """Вспомогательный метод: загружает и валидирует правила экспорта приемника"""
+    def _get_device_export_rules(self, device_folder: str) -> tuple[dict, str, dict]:
+        """Вспомогательный метод: загружает и валидирует правила экспорта устройства"""
         # todo: Проследить что за метод, и нах он нужен
-        if not receiver_folder:
-            raise ValueError("В схеме задачи не задана роль 'receiver'.")
+        if not device_folder:
+            raise ValueError(f"В схеме задачи не задана роль '{device_folder}'.")
 
-        rx_dir = os.path.join(self.root_dir, "hardware_library", receiver_folder)
+        rx_dir = os.path.join(self.root_dir, "hardware_library", device_folder)
         config_path = os.path.join(rx_dir, "device_config.yaml")
 
         if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Конфиг приемника не найден: {config_path}")
+            raise FileNotFoundError(f"Конфиг устройства не найден: {config_path}")
 
         with open(config_path, 'r', encoding='utf-8') as f:
             rx_cfg = yaml.safe_load(f)
 
         rules = rx_cfg.get('correction_export_rules', {})
         if not rules:
-            raise KeyError(f"Приемник '{receiver_folder}' не поддерживает экспорт коррекций (нет блока правил).")
+            raise KeyError(f"Устройство '{device_folder}' не поддерживает экспорт коррекций (нет блока правил).")
 
         return rules, rx_dir, rx_cfg
 
@@ -261,19 +262,23 @@ class MetrologixEngine:
         if not corr_cfg.get('generate_corrections', False):
             return
 
-        print("\n[Engine] Начало генерации файлов коррекции через текстовые шаблоны...")
-        receiver_folder = self.task_config['hardware_setup'].get('receiver')
+        print("\n[Engine] Начало генерации файлов коррекции...")
+        devices_to_export = corr_cfg.get('devices_to_export', {})
 
-        try:
-            # Загружаем правила экспорта выбранного анализатора
-            rules, rx_dir, rx_cfg = self._get_receiver_export_rules(receiver_folder)
-            template_path = os.path.join(rx_dir, rules.get('template_file'))
-            target_freq_unit = rules.get('target_freq_unit', 'MHz')
+        for device_role, settings in devices_to_export.items():
+            device_folder = self.task_config['hardware_setup'].get(device_role)
 
-            from src.reports.template_exporter import TemplateExporter
 
-            # Итерируемся по списку оборудования из задачи, для которого включен экспорт
-            for device_role, settings in corr_cfg.get('devices_to_export', {}).items():
+        # receiver_folder = self.task_config['hardware_setup'].get('receiver')
+
+            try:
+                # Загружаем правила экспорта выбранного устройства
+                rules, rx_dir, rx_cfg = self._get_device_export_rules(device_folder)
+                template_path = os.path.join(rx_dir, rules.get('template_file'))
+                target_freq_unit = rules.get('target_freq_unit', 'MHz')
+
+                # Итерируемся по списку оборудования из задачи, для которого включен экспорт
+                # for device_role, settings in corr_cfg.get('devices_to_export', {}).items():
                 if not settings.get('export', False):
                     continue
 
@@ -309,8 +314,8 @@ class MetrologixEngine:
                 multiplier = -1.0 if export_settings.get('invert_sign', False) else 1.0
                 freq_ratio = FrequencyConverter.get_ratio(from_unit='Hz', to_unit=target_freq_unit)
 
-                # Формируем подпапку hardware_corrections/Имя_Приемника и красивое имя файла
-                corr_dir = os.path.join(self.task_output_dir, "hardware_corrections", receiver_folder)
+                # Формируем подпапку hardware_corrections/Имя_Устройства и красивое имя файла
+                corr_dir = os.path.join(self.task_output_dir, "hardware_corrections", device_folder)
 
                 # Извлекаем физические границы всего диапазона железа из кэша
                 hardware_freqs = device.processed_parameters[param_name]['freq']
@@ -320,7 +325,7 @@ class MetrologixEngine:
                 # Извлекаем расширение из имени файла шаблона (например, .csv)
                 _, ext = os.path.splitext(rules.get('template_file', '.csv'))
 
-                # 💡 ИСПРАВЛЕНИЕ: Передаем границы всего доступного диапазона железа
+                # Передаем границы всего доступного диапазона железа
                 filename_base = self._build_informative_filename(device, param_name, f_hardware_min, f_hardware_max)
                 full_output_path = os.path.join(corr_dir, f"{filename_base}{ext}")
 
@@ -335,8 +340,8 @@ class MetrologixEngine:
                     meta_params=rules.get('template_meta', {})
                 )
 
-        except Exception as e:
-            print(f"[Engine Ошибка]: Не удалось выгрузить коррекции для оборудования: {e}")
+            except Exception as e:
+                print(f"[Engine Ошибка]: Не удалось выгрузить коррекции для оборудования: {e}")
 
     def _calculate_total_emc_budget(self):
         """Расчет инструментального бюджета неопределенности. Логика вывода делегирована в ExcelExporter."""

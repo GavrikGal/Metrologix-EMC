@@ -28,8 +28,6 @@ class TemplateExporter:
         template = Template(template_content)
         rendered_content = template.render(data_points=data_points, **meta_params)
 
-        print(meta_params)
-
         # 3. Сохранение результата
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
