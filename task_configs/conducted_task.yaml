@@ -10,7 +10,8 @@ budget_range_settings:
 hardware_setup:
   receiver: "keysight_n9030b"         # Папка приемника в hardware_library
   cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
-  reading_process: "operator_reading"
+  reading_process: "operator_reading" # Папка оператора
+  lisn: "nslk_8127"                   # Папка эквивалента сети
 
 # ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
 budget_composition:
@@ -34,6 +35,10 @@ budget_composition:
     device_role: "cable_system"
     target_parameter: "S21"
 
+  - component_name: "LISN Attenuation"
+    device_role: "lisn"
+    target_parameter: "Correction_Factor"
+
 
 
 
@@ -54,6 +59,12 @@ hardware_corrections_output:
       export: true
       target_parameter: "Sine_Accuracy"
       invert_sign: true
+      frequency_grid_type: calibration_points
+
+    lisn:
+      export: true
+      target_parameter: "Correction_Factor"
+      invert_sign: false
       frequency_grid_type: calibration_points
 
 

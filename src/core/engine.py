@@ -2,6 +2,8 @@ import os
 
 import yaml
 import numpy as np
+
+from src.hardware.lisn.lisn import LISN
 from src.hardware.rf_cable.rf_cable import RFCableSystem
 from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.process.measurement_process import MeasurementProcess
@@ -42,6 +44,8 @@ class MetrologixEngine:
                 self.active_devices[role] = EMCReceiver(device_dir)
             elif role == 'reading_process':
                 self.active_devices[role] = MeasurementProcess(device_dir)
+            elif role == 'lisn':
+                self.active_devices[role] = LISN(device_dir)
 
             print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
 
@@ -206,6 +210,7 @@ class MetrologixEngine:
 
     def _get_receiver_export_rules(self, receiver_folder: str) -> tuple[dict, str, dict]:
         """Вспомогательный метод: загружает и валидирует правила экспорта приемника"""
+        # todo: Проследить что за метод, и нах он нужен
         if not receiver_folder:
             raise ValueError("В схеме задачи не задана роль 'receiver'.")
 

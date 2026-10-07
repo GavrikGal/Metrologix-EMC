@@ -1,9 +1,8 @@
-# Файл: src/hardware/receiver/receiver.py
 from src.hardware.base_device import BaseDevice
 
 
-class EMCReceiver(BaseDevice):
-    """Класс-плагин для измерительных приемников и анализаторов ЭМС"""
+class LISN(BaseDevice):
+    """Класс-плагин для эквивалентов сети питания"""
 
     def process_device_data(self):
         """Стратегии загрузки таблиц поверки"""

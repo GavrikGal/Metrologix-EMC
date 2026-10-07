@@ -1,0 +1,58 @@
+device_name: "Schwarzbeck NSLK 8127"
+device_short_id: "NSLK 8127"
+serial_number: "8127-799"
+device_type: "LISN"
+
+# РАБОЧИЙ ДИАПАЗОН ПРИБОРА ПАСПОРТНЫЙ
+operating_frequency_range:
+  min_hz: 9000.0                      # От 9 кГц
+  max_hz: 30000000.0                  # До 30 МГц
+
+correction_export_rules:
+  template_file: "template.csv"       # Шаблон
+  target_freq_unit: "MHz"             # Прибор ждет частоту в МГц
+  template_meta:
+    model_name: "NSLK 8127"
+    freq_unit: "MHz"
+    antenna_unit: "None"
+    interpolation_type: "Linear"
+
+# ОПИСАНИЕ СВИДЕТЕЛЬСТВА О ПОВЕРКЕ ПРИЕМНИКА
+parameters:
+  # 1. Коэффициент калибровки (таблица Excel из свидетельства)
+  Correction_Factor:
+    source_type: "table"
+    file_path: "Коэффициент калибровки и расширенная неопределенность от 18.05.2026.xlsx" # Имя эксель-файла в папке прибора
+
+    columns_mapping:    # Говорим коду брать строго эти колонки из оригинального Excel
+      frequency: 0      # Колонка 0 - Частота, МГц
+      value: 5          # Колонка 2 - Погрешность измерения уровня мощности, дБ
+      uncertainty: 6    # Колонка 3 - Расширенная неопределенность, дБ
+
+    reader_settings:
+      file_format: "excel"              # Говорим ридеру открыть Excel
+      skip_rows: 1                      # Пропускаем шапку с названиями колонок
+      file_frequency_unit: "MHz"        # Важно! В файле частота указана в МГц!
+
+    uncertainty:
+      type: "table"                     # Неопределенность берем из самой таблицы
+      distribution: "normal"            # В свидетельствах распределение всегда нормальное
+      k_factor: 2                       # Расширенная неопределенность с коэффициентом k=2
+
+#  # 2. Амплитудная импульсная характеристика (По соответствию СИСПР 16-1-1)
+#  Pulse_Amplitude_Response:
+#    source_type: "constant"
+#    value: 0.0                          # Поправки нет (0 дБ)
+#    uncertainty:
+#      type: "constant"
+#      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+#      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
+#
+#  # 3. Характеристика от частоты повторения импульсов
+#  Pulse_Repetition_Frequency_Response:
+#    source_type: "constant"
+#    value: 0.0                          # Поправки нет (0 дБ)
+#    uncertainty:
+#      type: "constant"
+#      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+#      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
