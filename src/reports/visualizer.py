@@ -1,4 +1,3 @@
-# Файл: src/reports/visualizer.py
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,7 +5,7 @@ from src.core.math_models import FrequencyConverter
 
 
 class Visualizer:
-    """Продвинутый графический движок системы Metrologix EMC с поддержкой глубокой кастомизации"""
+    """Графический движок системы Metrologix EMC с поддержкой глубокой кастомизации"""
 
     @staticmethod
     def _build_safe_title(device_type: str, short_id: str, sn: str, freq_range_str: str) -> str:

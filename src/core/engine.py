@@ -1,16 +1,15 @@
 import os
 
-import pandas as pd
 import yaml
 import numpy as np
 from src.hardware.rf_cable.rf_cable import RFCableSystem
-from src.reports.visualizer import Visualizer
-from src.reports.template_exporter import TemplateExporter
+from src.hardware.receiver.receiver import EMCReceiver
+from src.hardware.process.measurement_process import MeasurementProcess
 from src.core.math_models import FrequencyConverter
 
 
 class MetrologixEngine:
-    """Главный управляющий движок системы Metrologix EMC"""
+    """Управляющий движок системы"""
 
     def __init__(self, task_config_path: str, root_dir: str):
         self.root_dir = root_dir
@@ -25,7 +24,7 @@ class MetrologixEngine:
 
         self.active_devices = {}
 
-    def build_measurement_system(self):
+    def _build_measurement_system(self):
         """Сканирует hardware_setup задачи и создает объекты приборов из библиотеки"""
         setup = self.task_config.get('hardware_setup', {})
         hardware_lib_path = os.path.join(self.root_dir, "hardware_library")
@@ -36,14 +35,12 @@ class MetrologixEngine:
                 raise FileNotFoundError(f"Папка оборудования '{folder_name}' не найдена в {hardware_lib_path}")
 
             # Внутри цикла сборки схемы в engine.py:
+            # todo: переделать под лучшие практики
             if role == 'cable_system':
                 self.active_devices[role] = RFCableSystem(device_dir)
             elif role == 'receiver':
-                from src.hardware.receiver.receiver import EMCReceiver
                 self.active_devices[role] = EMCReceiver(device_dir)
             elif role == 'reading_process':
-                # КЛАСС ПРОЦЕССА/ОПЕРАТОРА
-                from src.hardware.process.measurement_process import MeasurementProcess
                 self.active_devices[role] = MeasurementProcess(device_dir)
 
             print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
@@ -397,11 +394,11 @@ class MetrologixEngine:
         )
 
     def run(self):
-        """Главный рабочий цикл Движка — строго последовательный и изолированный"""
+        """Рабочий цикл"""
         print(f"\n--- Запуск задачи: {self.task_name} ---")
 
-        # 1. Собираем измерительную схему
-        self.build_measurement_system()
+        # 1. Сбор измерительной схемы
+        self._build_measurement_system()
 
         # 2. Запускаем расчет физики внутренних данных приборов (СТРОГО ОДИН ЦИКЛ)
         print("\n[Engine] Расчет и загрузка метрологических параметров оборудования...")

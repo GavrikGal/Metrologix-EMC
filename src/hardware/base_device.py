@@ -16,14 +16,13 @@ class BaseDevice(ABC):
     def __init__(self, device_dir_path: str):
         self.device_dir_path = device_dir_path
         self.config_path = os.path.join(device_dir_path, "device_config.yaml")
-        self.config = self.load_config()
+        self.config = self._load_config()
         self.name = self.config.get('device_name', 'Unknown Device')
 
-        # Универсальное хранилище обработанных параметров:
-        # { 'S21': {'freq': [...], 'value': [...], 'u_standard': [...]}, 'Impedance': ... }
+        # Хранилище обработанных параметров:
         self.processed_parameters = {}
 
-    def load_config(self) -> dict:
+    def _load_config(self) -> dict:
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Конфигурация прибора отсутствует: {self.config_path}")
         with open(self.config_path, 'r', encoding='utf-8') as f:

@@ -1,9 +1,8 @@
-# Файл: main.py
 import os
 from src.core.engine import MetrologixEngine
 
 if __name__ == "__main__":
-    # Определяем корневой путь проекта
+    # Корневой путь проекта
     root_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Путь к конфигурационному файлу запускаемой задачи
