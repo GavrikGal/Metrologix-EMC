@@ -1,0 +1,18 @@
+visualizer_setup:
+  sub_plots:
+    unit: "MHz"
+    x_scale: "linear"           # "log" / "linear"
+    show_limit_line: false
+    limit_value_db: -1.0
+    table_points_count: 30      # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+    style_settings:
+      line_color: "tab:blue"      # Темно-синий цвет основной кривой прибора
+      line_width: 1.2            # Толщина основной линии
+      uncertainty_color: "tab:blue" # Базовый цвет коридора (программа сама сделает его прозрачным)
+      uncertainty_alpha: 0.20    # Коэффициент прозрачности коридора неопределенности
+      limit_color: "tab:red"     # Насыщенный красный цвет для линии лимита
+      limit_width: 1.0           # Толщина линии лимита
+      limit_style: "--"          # Пунктирная линия лимита
+      shading_color: "lightgrey"   # Светло-серый цвет для затемнения нерабочих зон
+      shading_alpha: 0.5         # Плотность затемнения нерабочих зон
