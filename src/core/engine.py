@@ -9,14 +9,18 @@ from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.process.measurement_process import MeasurementProcess
 from src.core.math_models import FrequencyConverter
 from src.reports.template_exporter import TemplateExporter
+from src.reports.visualizer import Visualizer
+from src.reports.protocol_table_exporter import ProtocolTableExporter
 
 
 class MetrologixEngine:
     """Управляющий движок системы"""
 
-    def __init__(self, task_config_path: str, root_dir: str):
+    def __init__(self, settings_config_path: str, task_config_path: str, root_dir: str):
         self.root_dir = root_dir
-        self.task_config_path = task_config_path
+
+        with open(settings_config_path, 'r', encoding='utf-8') as f:
+            self.settings_config = yaml.safe_load(f)
 
         with open(task_config_path, 'r', encoding='utf-8') as f:
             self.task_config = yaml.safe_load(f)
@@ -136,10 +140,6 @@ class MetrologixEngine:
         gen_plots = proto_cfg.get('generate_plots', False)
         gen_tables = proto_cfg.get('generate_data_tables', False)
 
-        # Импортируем наши разделенные классы отчетов
-        from src.reports.visualizer import Visualizer
-        from src.reports.protocol_table_exporter import ProtocolTableExporter
-
         for item in proto_cfg.get('items', []):
             role_id = item.get('device_id')
             param_name = item.get('target_parameter')  # 💡 Извлекаем параметр динамически из задачи!
@@ -178,7 +178,8 @@ class MetrologixEngine:
                         )
 
                         # 💡 ИСПРАВЛЕНИЕ: Убрали filename, так как Visualizer генерирует его сам!
-                        Visualizer.draw_subplot(
+                        visualizer = Visualizer(self.settings_config.get("visualizer_setup"))
+                        visualizer.draw_subplot(
                             output_dir=self.task_output_dir,
                             device_config=device.config,
                             param_name=param_name,
@@ -415,7 +416,7 @@ class MetrologixEngine:
         for role, device in self.active_devices.items():
             device.process_device_data()
 
-        # 3. 💡 ИСПРАВЛЕНИЕ: Вызываем материалы протокола строго ПОСЛЕ завершения всех расчетов приборов!
+        # 3. Вызываем материалы протокола строго ПОСЛЕ завершения всех расчетов приборов!
         self._generate_protocol_materials()
 
         # 4. Выгружаем файлы коррекций для флешки анализатора

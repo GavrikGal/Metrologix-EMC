@@ -6,6 +6,10 @@ from src.core.math_models import FrequencyConverter
 
 class Visualizer:
     """Графический движок системы Metrologix EMC с поддержкой глубокой кастомизации"""
+    def __init__(self, visualizer_config):
+        """Инициализация визуализатора, установка дефолтных настроек и стиля"""
+        self.plots_config = visualizer_config.get("plots_settings")
+        self.style_config = visualizer_config.get("style_settings")
 
     @staticmethod
     def _build_safe_title(device_type: str, short_id: str, sn: str, freq_range_str: str) -> str:
@@ -16,8 +20,7 @@ class Visualizer:
         #     full_title = full_title.replace(char, '')
         return full_title
 
-    @staticmethod
-    def draw_subplot(output_dir: str, device_config: dict, param_name: str,
+    def draw_subplot(self, output_dir: str, device_config: dict, param_name: str,
                      freqs_hz: np.ndarray, values: np.ndarray, u_std: np.ndarray,
                      sub_cfg: dict, show_unc: bool = True):
         """Отрисовывает профессиональный кастомизированный спектральный график по референсу пользователя"""
@@ -25,7 +28,7 @@ class Visualizer:
         os.makedirs(plots_dir, exist_ok=True)
 
         # 1. Считываем единицу измерения и масштабируем ось частот под данный конкретный график
-        target_unit = sub_cfg.get('unit', 'MHz')
+        target_unit = sub_cfg.get('unit', self.plots_config.get('unit'))
         ratio = FrequencyConverter.get_ratio(from_unit="Hz", to_unit=target_unit)
         freqs_scaled = freqs_hz * ratio
 
@@ -44,17 +47,17 @@ class Visualizer:
         # 2. Отрисовка основной линии прибора
         plt.plot(freqs_scaled, values,
                  label=short_id,
-                 color=st.get('line_color', '#1F497D'),
-                 lw=st.get('line_width', 1.5),
+                 color=st.get('line_color', self.style_config.get('line_color')),
+                 lw=st.get('line_width', self.style_config.get('line_width')),
                  zorder=3)
 
         # 3. Отрисовка коридора неопределенности k=2
         if show_unc:
             u_expanded = u_std * 2
             plt.fill_between(freqs_scaled, values - u_expanded, values + u_expanded,
-                             color=st.get('uncertainty_color', '#7292C5'),
-                             alpha=st.get('uncertainty_alpha', 0.20),
-                             lw=st.get('line_width', 1.5)/2,
+                             color=st.get('uncertainty_color', self.style_config.get('uncertainty_color')),
+                             alpha=st.get('uncertainty_alpha', self.style_config.get('uncertainty_alpha')),
+                             lw=st.get('line_width', self.style_config.get('line_width'))/2,
                              label='Неопределённость',
                              zorder=2)
 
@@ -62,15 +65,15 @@ class Visualizer:
         if sub_cfg.get('show_limit_line', False):
             limit_val = sub_cfg.get('limit_value_db')
             plt.axhline(y=limit_val,
-                        color=st.get('limit_color', '#C00000'),
-                        linestyle=st.get('limit_style', '--'),
-                        lw=st.get('limit_width', 1.2),
+                        color=st.get('limit_color', self.style_config.get('limit_color')),
+                        linestyle=st.get('limit_style', self.style_config.get('limit_style')),
+                        lw=st.get('limit_width', self.style_config.get('limit_width')),
                         label='Лимит',
                         zorder=4)
 
         # 5. 💡 МЕТРОЛОГИЧЕСКОЕ ЗАТЕМНЕНИЕ НЕРАБОЧИХ ОБЛАСТЕЙ (ПО ВАШЕМУ РЕФЕРЕНСУ)
-        sh_color = st.get('shading_color', '#F2F2F2')
-        sh_alpha = st.get('shading_alpha', 0.6)
+        sh_color = st.get('shading_color', self.style_config.get('shading_color'))
+        sh_alpha = st.get('shading_alpha', self.style_config.get('shading_alpha'))
 
         plt_x_min = plt.xlim()[0]
         plt_x_max = plt.xlim()[1]
@@ -114,7 +117,7 @@ class Visualizer:
             )
 
         # Базовые настройки осей и сеток
-        plt.xscale(sub_cfg.get('x_scale', 'linear'))
+        plt.xscale(sub_cfg.get('x_scale', self.plots_config.get('x_scale')))
         plt.xlim(plt_x_min, plt_x_max)
         plt.grid(True, which='major', ls="-", alpha=0.5, zorder=0, lw=0.3)
         plt.minorticks_on()
