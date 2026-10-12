@@ -29,13 +29,20 @@ class MetrologixEngine:
         self.task_output_dir = os.path.join(root_dir, "output", self.task_name)
         os.makedirs(self.task_output_dir, exist_ok=True)
 
+
+        self.hardware_library_path = self.settings_config.get('hardware_library_path')
+        self.limit_library_path = self.settings_config.get("limit_library_path")
+
         self.active_devices = {}
 
     def _build_measurement_system(self):
-        """Сканирует hardware_setup задачи и создает объекты приборов из библиотеки"""
+        """Сканирует hardware_setup задачи и создает объекты приборов из библиотеки,
+           загружает лимиты, указанные в конфиге задачи"""
         setup = self.task_config.get('hardware_setup', {})
-        hardware_lib_path = os.path.join(self.root_dir, "hardware_library")
+        hardware_lib_path = os.path.join(self.root_dir, self.hardware_library_path)
+        limit_lib_path = os.path.join(self.root_dir, self.limit_library_path)
 
+        # Инициализация компонентов измерительной цепи
         for role, folder_name in setup.items():
             device_dir = os.path.join(hardware_lib_path, folder_name)
             if not os.path.exists(device_dir):
@@ -53,6 +60,30 @@ class MetrologixEngine:
                 self.active_devices[role] = LISN(device_dir)
 
             print(f"[Engine] В схему на роль '{role}' назначен прибор: {self.active_devices[role].name}")
+
+        # Загрузка лимитов
+        limit_cfg = self.task_config.get('limits', {})
+        if not limit_cfg:
+            raise NotADirectoryError(f"Установки лимитов не найдены в конфигурации {self.task_name}")
+
+        if limit_cfg.get('limit_type') == 'constant':
+            print("constant")
+        else:
+            print("table")
+
+    def _load_as_constant(self):
+        pass
+
+    def _set_constant_on_range(self, f_min: float, f_max: float, value: float):
+        """Лимит задан как фиксированная константа в пределах исследуемого диапазона задачи"""
+        if f_min <=0:
+            f_min = 0.1     # Защита от нулевой частоты для лог-шкал визуализатора
+
+        freqs = np.linspace(f_min, f_max, num=100)
+        values = np.full_like(freqs, value)
+
+        
+
 
     def _generate_target_frequencies(self, device, param_name: str, settings: dict) -> np.ndarray:
         """

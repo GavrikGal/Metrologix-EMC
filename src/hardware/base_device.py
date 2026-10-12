@@ -92,7 +92,7 @@ class BaseDevice(ABC):
         else:
             raw_unc = df[mapping['uncertainty']].values.astype(float)
 
-        # 💡 МЕТРОЛОГИЧЕСКОЕ ИЗМЕНЕНИЕ: Сохраняем в кэш СЫРЫЕ (исходные) метрологические параметры распределения
+        # Сохраняем в кэш СЫРЫЕ (исходные) метрологические параметры распределения
         self.processed_parameters[param_name] = {
             'freq': freqs_in_hz,
             'value': values,

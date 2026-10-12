@@ -16,3 +16,6 @@ visualizer_setup:
     limit_style: "--"          # Пунктирная линия лимита
     shading_color: "lightgrey"   # Светло-серый цвет для затемнения нерабочих зон
     shading_alpha: 0.5         # Плотность затемнения нерабочих зон
+
+limit_library_path: "task_configs/limits"
+hardware_library_path: "hardware_library"
