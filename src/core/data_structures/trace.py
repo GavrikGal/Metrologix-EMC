@@ -11,6 +11,17 @@ class Trace:
         self.frequencies_units = frequencies_units
         self.values_units = values_units
 
+    @classmethod
+    def create_constant(cls, f_min: float, f_max: float, value: float,
+                        frequencies_units: str = 'Hz', values_units: str = 'dB'):
+        """Фабричный метод: хранит 2 крайние точки диапазона"""
+        return cls(
+            frequencies=np.array([f_min, f_max]),
+            values=np.array([value, value]),
+            frequencies_units=frequencies_units,
+            values_units=values_units
+        )
+
     def get_value_at(self, frequency: float) -> float:
         """Получение интерполированного значения на заданной частоте"""
         return float(np.interp(frequency, self.frequencies, self.values))
@@ -19,14 +30,6 @@ class Trace:
         """Получение интерполированных значений для массива заданных частот"""
         return np.interp(frequencies, self.frequencies, self.values)
 
-    def get_raw_frequencies(self) -> np.ndarray:
-        """Возвращает исходные значения частот, которые были добавлены при инициализации"""
-        return self.frequencies
-
-    # def get_frequencies_units(self) -> str:
-    #     """Возвращает единицы измерения частоты, по умолчанию Hz"""
-    #     return self.frequencies_units
-    #
-    # def get_values_units(self) -> str:
-    #     """Возвращает единицы измерения значений, по умолчанию dB"""
-    #     return self.values_units
+    def get_raw_data(self) -> tuple[np.ndarray, np.ndarray]:
+        """Для протокола: возвращает сырые неизмененные точки калибровки/измерений"""
+        return self.frequencies, self.values

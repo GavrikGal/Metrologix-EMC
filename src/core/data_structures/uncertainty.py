@@ -21,6 +21,8 @@ class Uncertainty(Trace):
         super().__init__(frequencies, values, frequencies_units, values_units)
         self.distribution_type = distribution_type.lower()
 
+        # В соответствии с типом распределения устанавливается нужный коэффициент
+        # для приведения значений неопределенности к стандартной
         if self.distribution_type == 'normal':
             if coverage_factor is None:
                 self.coverage_factor = 2.0
@@ -35,19 +37,13 @@ class Uncertainty(Trace):
             raise ValueError(f'Неизвестное распределение: {self.distribution_type}'
                              f'Доступные: {list(self.DISTRIBUTION_DIVISORS.keys())}')
 
-
     @classmethod
-    def create_constant(cls,
-                        frequencies: np.ndarray,
-                        value: float,
-                        frequencies_units: str = 'Hz',
-                        values_units: str = 'dB',
-                        distribution_type: str = 'normal',
-                        coverage_factor: float|None = 2
-                        ):
-        """Фабричный метод для создания константной неопределенности"""
-        constant_values = np.full_like(frequencies, fill_value=value, dtype=float)
-        return cls(frequencies, constant_values, frequencies_units, values_units, distribution_type, coverage_factor)
+    def create_constant(cls, f_min: float, f_max: float, value: float,
+                        frequencies_units: str = 'Hz', values_units: str = 'dB',
+                        distribution_type: str = 'rectangular', coverage_factor: float | None = None):
+        """Константная неопределенность на 2 точки"""
+        return cls(np.array([f_min, f_max]), np.array([value, value]),
+                   frequencies_units, values_units, distribution_type, coverage_factor)
 
     def get_standard_uncertainty_at(self, frequency: float) -> float:
         """Возвращает стандартную неопределенность u(xi) на конкретной частоте"""
