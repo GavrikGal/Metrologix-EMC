@@ -29,18 +29,20 @@ class ProtocolTableExporter:
         # 1. Добавляем сырые трассы Опорного сигнала (Baseline / Система 1)
         sys1_matrix = raw_slice_data['sys1_traces']
         for t_idx in range(sys1_matrix.shape[1]):
-            protocol_dict[f'Baseline_Trace_{t_idx + 1} [dBuV]'] = np.round(sys1_matrix[:, t_idx], 3)
+            # 🌟 Добавлен честный .flatten() для превращения любой структуры в 1D вектор
+            protocol_dict[f'Baseline_Trace_{t_idx + 1} [dBuV]'] = np.round(sys1_matrix[:, t_idx].flatten(), 3)
 
         # 2. Добавляем промежуточный расчет: Среднее значение Опоры
-        protocol_dict['Baseline_Mean [dBuV]'] = np.round(raw_slice_data['sys1_mean_db'], 3)
+        protocol_dict['Baseline_Mean [dBuV]'] = np.round(raw_slice_data['sys1_mean_db'].flatten(), 3)
 
         # 3. Добавляем сырые трассы Измеряемого тракта (Target / Система 2)
         sys2_matrix = raw_slice_data['sys2_traces']
         for t_idx in range(sys2_matrix.shape[1]):
-            protocol_dict[f'Target_Trace_{t_idx + 1} [dBuV]'] = np.round(sys2_matrix[:, t_idx], 3)
+            # 🌟 Добавлен честный .flatten()
+            protocol_dict[f'Target_Trace_{t_idx + 1} [dBuV]'] = np.round(sys2_matrix[:, t_idx].flatten(), 3)
 
         # 4. Добавляем промежуточный расчет: Среднее значение Тракта
-        protocol_dict['Target_Mean [dBuV]'] = np.round(raw_slice_data['sys2_mean_db'], 3)
+        protocol_dict['Target_Mean [dBuV]'] = np.round(raw_slice_data['sys2_mean_db'].flatten(), 3)
 
         # 💡 ИСПРАВЛЕНИЕ: Имя столбца теперь формируется ДИНАМИЧЕСКИ на основе param_name!
         protocol_dict[f'Calculated {param_name} [dB]'] = np.round(raw_slice_data['values_db'], 3)
