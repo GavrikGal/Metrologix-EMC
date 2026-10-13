@@ -12,7 +12,9 @@ class ProtocolTableExporter:
     def export_raw_slice(output_dir: str, filename: str, raw_slice_data: dict,
                          target_unit: str, param_name: str):
         """Формирует расширенную таблицу протокола с динамическими именами параметров"""
-        tables_dir = os.path.join(output_dir, "protocol_tables")
+        # 🌟 ИСПРАВЛЕНИЕ: Избавляемся от повторного склеивания "protocol_tables".
+        # Оркестратор уже сформировал нам правильный путь до папки девайса!
+        tables_dir = output_dir
         os.makedirs(tables_dir, exist_ok=True)
 
         freqs_hz = raw_slice_data['freq_hz']

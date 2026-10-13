@@ -78,5 +78,12 @@ class ExcelExporter:
         # Сохранение итогового файла книги
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, f"Uncertainty_Budget_{task_name}.xlsx")
-        wb.save(file_path)
-        print(f"[ExcelExporter] Базовый цифровой отчет успешно сохранен: {file_path}")
+
+        try:
+            wb.save(file_path)
+            print(f"[ExcelExporter] Базовый цифровой отчет успешно сохранен: {file_path}")
+        except PermissionError:
+            print(f"\n[КРИТИЧЕСКАЯ ОШИБКА ДОСТУПА]: Не удалось сохранить бюджет неопределенности!")
+            print(f"Пожалуйста, ЗАКРОЙТЕ файл '{os.path.basename(file_path)}' в Excel и перезапустите программу.\n")
+            # Мягко гасим ошибку, чтобы программа выполнила остальной код (графики, поправки)
+            return

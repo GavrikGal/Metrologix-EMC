@@ -12,6 +12,7 @@ limits:
   limit_type: "table"                # or constant
   limit_value: -1
   file_format: "excel"
+  skip_rows: 1
   limit_path: "CISPR 32 cond class B.xlsx"
 
 
