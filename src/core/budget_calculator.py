@@ -1,30 +1,34 @@
 # src/core/budget_calculator.py
-from src.core.task_context import TaskContext
-from src.core.measurement_chain import MeasurementChain
+import numpy as np
+from src.core.task import Task
+from src.core.hardware import Hardware
 
 
 class CISPRBudgetCalculator:
     """Выполняет чистый математический расчет инструментального бюджета по СИСПР 16-4-2"""
 
     @staticmethod
-    def calculate_emc_budget(context: TaskContext, chain: MeasurementChain) -> list:
-        budget_comp = context.config.get('budget_composition', [])
+    def calculate_emc_budget(task: Task, hardware: Hardware) -> list:
+        budget_components = task.config.get('budget_components', [])
         calculated_rows = []
 
-        for item in budget_comp:
+        # Создаем плотную сетку частот для поиска максимума погрешности внутри полосы задачи
+        test_frequencies = np.linspace(task.frequency_min_hz, task.frequency_max_hz, num=200)
+
+        for item in budget_components:
             device_role = item.get('device_role')
             param_name = item.get('target_parameter')
-            device = chain.get_device(device_role)
+            device = hardware.get_device(device_role)
 
             if not device or param_name not in device.processed_parameters:
                 continue
 
             parameter = device.processed_parameters[param_name]
 
-            # 🌟 ДЕЛЕГИРОВАНИЕ: Неопределенность сама считает свои максимумы в диапазоне задачи
             if parameter.uncertainty_trace:
+                # Делегирование: Неопределенность сама считает свои максимумы в диапазоне задачи
                 max_u_raw, u_std_val = parameter.uncertainty_trace.get_max_uncertainties_in_range(
-                    context.f_min_hz, context.f_max_hz
+                    task.frequency_min_hz, task.frequency_max_hz
                 )
 
                 dist_type = parameter.uncertainty_trace.distribution_type.upper()

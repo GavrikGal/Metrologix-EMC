@@ -2,7 +2,7 @@
 from .base_provider import BaseDataProvider
 from .constant_provider import ConstantDataProvider
 from .table_provider import TableDataProvider
-from .substitution_provider import SubstitutionDataProvider
+from .calculated_trace_difference_provider import CalculatedTraceDifferenceProvider
 
 class DataProviderFactory:
     """Универсальная фабрика для сборки стратегий получения данных"""
@@ -14,6 +14,6 @@ class DataProviderFactory:
         elif st == 'table':
             return TableDataProvider(root_dir, config)
         elif st == 'calculated_substitution':
-            return SubstitutionDataProvider(root_dir, config)
+            return CalculatedTraceDifferenceProvider(root_dir, config)
         else:
             raise ValueError(f"Неизвестный тип источника данных: {source_type}")

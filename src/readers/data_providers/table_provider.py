@@ -9,7 +9,7 @@ from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 
 class TableDataProvider(BaseDataProvider):
-    def load_parameter(self) -> Parameter:
+    def get_parameter(self) -> Parameter:
         file_path = os.path.join(self.root_dir, self.config.get('file_path'))
         r_set = self.config.get('reader_settings', {})
         mapping = self.config.get('columns_mapping', {'frequency': 0, 'value': 1, 'uncertainty': 2})

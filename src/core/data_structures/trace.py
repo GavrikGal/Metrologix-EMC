@@ -51,3 +51,16 @@ class Trace:
         """Находит истинный максимум физической величины в заданном диапазоне частот"""
         _, slice_values = self.get_raw_slice(f_min_hz, f_max_hz)
         return float(np.max(slice_values))
+
+    def align_to_grid(self, target_frequencies: np.ndarray) -> 'Trace':
+        """
+        МЕТРОЛОГИЧЕСКОЕ ВЫРАВНИВАНИЕ: Возвращает новый объект Trace,
+        значения которого интерполированы под заданную сетку частот.
+        """
+        aligned_values = self.get_values_for_frequencies(target_frequencies)
+        return Trace(
+            frequencies=target_frequencies,
+            values=aligned_values,
+            frequencies_units=self.frequencies_units,
+            values_units=self.values_units
+        )

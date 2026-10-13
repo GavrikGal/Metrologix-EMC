@@ -6,7 +6,7 @@ from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 
 class ConstantDataProvider(BaseDataProvider):
-    def load_parameter(self) -> Parameter:
+    def get_parameter(self) -> Parameter:
         # Для константы берем границы диапазона прибора
         f_min = float(self.config.get('f_min', 9000.0))
         f_max = float(self.config.get('f_max', 40e9))

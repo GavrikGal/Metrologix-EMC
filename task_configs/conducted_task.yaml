@@ -23,7 +23,7 @@ hardware_setup:
   lisn: "nslk_8127"                   # Папка эквивалента сети
 
 # ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
-budget_composition:
+budget_components:
   - component_name: "Receiver Reading"
     device_role: "reading_process"
     target_parameter: "Receiver_Reading"

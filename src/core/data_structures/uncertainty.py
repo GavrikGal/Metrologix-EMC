@@ -48,3 +48,15 @@ class Uncertainty(Trace):
         max_std = float(np.max(slice_raw_values / self.divisor))
 
         return max_raw, max_std
+
+    def align_to_grid(self, target_frequencies: np.ndarray) -> 'Uncertainty':
+        """Возвращает новый объект Uncertainty, интерполированный под заданную сетку частот"""
+        aligned_values = self.get_values_for_frequencies(target_frequencies)
+        return Uncertainty(
+            frequencies=target_frequencies,
+            values=aligned_values,
+            frequencies_units=self.frequencies_units,
+            values_units=self.values_units,
+            distribution_type=self.distribution_type,
+            k_factor=self.k_factor
+        )

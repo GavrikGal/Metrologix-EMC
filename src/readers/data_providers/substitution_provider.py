@@ -10,10 +10,10 @@ from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 
 
-class SubstitutionDataProvider(BaseDataProvider):
+class SubstitutionDataProvider_deprecated(BaseDataProvider):
     """Стратегия сложного расчета затухания и неопределенности типа А методом замещения"""
 
-    def load_parameter(self) -> Parameter:
+    def get_parameter(self) -> Parameter:
         r_set = self.config.get('reader_settings', {})
         trace_cols = r_set.get('use_columns', [0, 1, 2, 3])  # Пример дефолтных колонок
         only_traces = [c for c in trace_cols if c != 0]

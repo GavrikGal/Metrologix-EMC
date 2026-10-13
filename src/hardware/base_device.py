@@ -28,4 +28,4 @@ class BaseDevice(ABC):
                 root_dir=self.device_dir_path,
                 config=target_cfg
             )
-            self.processed_parameters[param_name] = provider.load_parameter()
+            self.processed_parameters[param_name] = provider.get_parameter()

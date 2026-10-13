@@ -8,6 +8,6 @@ class BaseDataProvider(ABC):
         self.config = config
 
     @abstractmethod
-    def load_parameter(self) -> Parameter:
-        """Возвращает Parameter со стабильными ссылками на сырые Trace и Uncertainty"""
+    def get_parameter(self) -> Parameter:
+        """Выполняет загрузку, фильтрацию и математический синтез метрологического параметра"""
         pass
