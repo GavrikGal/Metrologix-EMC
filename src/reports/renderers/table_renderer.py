@@ -1,11 +1,13 @@
 # src/reports/renderers/table_renderer.py
 import os
 import numpy as np
+
+from src.reports.base_renderer import BaseRenderer
 from src.reports.protocol_table_exporter import ProtocolTableExporter
 from src.reports.utils.name_builder import NameBuilder
 
 
-class TableRenderer:
+class TableRenderer(BaseRenderer):
     """Компонент выборки реальных физических точек и генерации CSV-таблиц протокола"""
 
     def render(self, output_dir: str, device_config: dict, param_name: str,

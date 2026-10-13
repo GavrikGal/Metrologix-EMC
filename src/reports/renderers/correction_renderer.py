@@ -2,11 +2,12 @@
 import os
 import numpy as np
 from src.core.math_models import FrequencyConverter
+from src.reports.base_renderer import BaseRenderer
 from src.reports.template_exporter import TemplateExporter
 from src.reports.utils.name_builder import NameBuilder
 
 
-class CorrectionRenderer:
+class CorrectionRenderer(BaseRenderer):
     """Компонент умной интерполяции сеток и экспорта файлов поправок через Jinja2 шаблоны"""
 
     def render(self, output_dir: str, device, param_name: str, settings: dict, target_frequencies: np.ndarray):
