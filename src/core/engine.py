@@ -1,5 +1,6 @@
 # src/core/engine.py
 import os
+import logging
 from src.core.task import Task
 from src.core.hardware import Hardware
 from src.core.budget_calculator import CISPRBudgetCalculator
@@ -15,19 +16,23 @@ class MetrologixEngine:
         self.settings = settings_config
         self.task = Task(task_config_path, self.settings, root_dir)
 
+        self.logger = logging.getLogger("Metrologix")
+
         hw_lib_absolute = os.path.join(root_dir, self.settings.get('hardware_library_path'))
         self.hardware = Hardware(hw_lib_absolute)
 
     def run(self) -> None:
-        print(f"\n--- Запуск выполнения сессии: {self.task.name} ---")
+        self.logger.info(f"Старт выполнения измерительной сессии: {self.task.name}")
 
         # 1. Сборка измерительной схемы и запуск чтения сырых файлов приборов
         setup_cfg = self.task.config.get('hardware_setup', {})
         self.hardware.build_tract(setup_cfg)
+
+        self.logger.info("Сканирование и обработка файлов калибровки оборудования...")
         self.hardware.process_all_devices()
 
         # 2. Расчет метрологического бюджета СИСПР (Чистая математика ядра)
-        print("\n[Engine] Запуск метрологического калькулятора СИСПР 16-4-2...")
+        self.logger.info("Запуск метрологического калькулятора СИСПР 16-4-2...")
         budget_data = CISPRBudgetCalculator.calculate_emc_budget(self.task, self.hardware)
 
         # 3. Генерация Excel-книги суммарного бюджета
@@ -52,15 +57,15 @@ class MetrologixEngine:
 
         # Проверяем флаги в конфигурации текущей задачи
         if proto_cfg and proto_cfg.get('generate_plots', False):
-            print("[Engine] Команда: сформировать спектральные графики...")
+            self.logger.info("Формирование спектральных графиков отчетов...")
             orchestrator.generate_plots()
 
         if proto_cfg and proto_cfg.get('generate_data_tables', False):
-            print("[Engine] Команда: выгрузить таблицы реальных отсчетов...")
+            self.logger.info("Выгрузка таблиц реальных физических отсчетов для протокола...")
             orchestrator.generate_data_tables()
 
         if corr_cfg and corr_cfg.get('generate_corrections', False):
-            print("[Engine] Команда: выгрузить калибровочные файлы для приборов...")
+            self.logger.info("Экспорт файлов амплитудных коррекций для памяти приборов...")
             orchestrator.generate_hardware_corrections()
 
-        print(f"\n--- Задача {self.task.name} успешно завершена! Данные сохранены в output. ---")
+        self.logger.info(f"Задача {self.task.name} успешно выполнена.")

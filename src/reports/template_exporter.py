@@ -1,6 +1,9 @@
 # Файл: src/reports/template_exporter.py
 import os
+import logging
 from jinja2 import Template
+
+logger = logging.getLogger("Metrologix")
 
 
 class TemplateExporter:
@@ -33,4 +36,4 @@ class TemplateExporter:
         with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
             f.write(rendered_content)
 
-        print(f"[TemplateExporter] Создан файл: {os.path.basename(output_path)}")
+        logger.info(f"Создан файл: {os.path.basename(output_path)}")

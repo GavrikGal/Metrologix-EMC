@@ -1,8 +1,11 @@
 # Файл: src/reports/protocol_table_exporter.py
 import os
+import logging
 import pandas as pd
 import numpy as np
 from src.core.math_models import FrequencyConverter
+
+logger = logging.getLogger("Metrologix")
 
 
 class ProtocolTableExporter:
@@ -55,4 +58,4 @@ class ProtocolTableExporter:
         df_protocol = pd.DataFrame(protocol_dict)
         table_path = os.path.join(tables_dir, f"{filename}.csv")
         df_protocol.to_csv(table_path, index=False, sep=';', encoding='utf-8-sig')
-        print(f"[Protocol Exporter] Создана таблица параметра '{param_name}': {filename}.csv")
+        logger.info(f"Создана таблица параметра '{param_name}': {filename}.csv")
