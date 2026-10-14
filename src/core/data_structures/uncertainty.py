@@ -13,9 +13,12 @@ class Uncertainty(Trace):
 
     def __init__(self, frequencies: np.ndarray, values: np.ndarray,
                  frequencies_units: str = 'Hz', values_units: str = 'dB',
-                 distribution_type: str = 'normal', k_factor: float | None = 2.0):
+                 distribution_type: str = 'normal', k_factor: float | None = 2.0,
+                 is_symmetric: bool = True, asymmetric_label: str = ""):
         super().__init__(frequencies, values, frequencies_units, values_units)
         self.distribution_type = distribution_type.lower()
+        self.is_symmetric = is_symmetric
+        self.asymmetric_label = asymmetric_label
 
         if self.distribution_type == 'normal':
             self.k_factor = float(k_factor if k_factor is not None else 2.0)
@@ -29,9 +32,11 @@ class Uncertainty(Trace):
     @classmethod
     def create_constant(cls, frequencies_units: str = 'Hz', values_units: str = 'dB',
                         distribution_type: str = 'rectangular', k_factor: float | None = None,
-                        f_min: float = 9000.0, f_max: float = 40e9, value: float = 0.0):
+                        f_min: float = 9000.0, f_max: float = 40e9, value: float = 0.0,
+                        is_symmetric: bool = True, asymmetric_label: str = ""):
         return cls(np.array([f_min, f_max]), np.array([value, value]),
-                   frequencies_units, values_units, distribution_type, k_factor)
+                   frequencies_units, values_units, distribution_type, k_factor,
+                   is_symmetric, asymmetric_label)
 
     def get_standard_uncertainty_for_frequencies(self, frequencies: np.ndarray) -> np.ndarray:
         return self.get_values_for_frequencies(frequencies) / self.divisor

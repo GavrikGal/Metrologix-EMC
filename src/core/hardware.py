@@ -1,5 +1,7 @@
 # src/core/hardware.py
 import os
+
+from src.core.task import Task
 from src.hardware.rf_cable.rf_cable import RFCableSystem
 from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.lisn.lisn import LISN
@@ -29,10 +31,10 @@ class Hardware:
 
             self.devices[device_role] = device
 
-    def process_all_devices(self) -> None:
+    def process_all_devices(self, task: Task) -> None:
         """Запускает чтение и кэширование параметров для всего оборудования"""
         for device in self.devices.values():
-            device.process_device_data()
+            device.process_device_data(task)
 
     def get_device(self, device_role: str):
         return self.devices.get(device_role)

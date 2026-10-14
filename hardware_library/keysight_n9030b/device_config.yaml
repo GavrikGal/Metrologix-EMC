@@ -56,3 +56,21 @@ parameters:
       type: "constant"
       value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
       distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
+
+  # 4. Минимальный уровень шума
+  Receiver_Noise_Floor:
+    source_type: "calculated_noise_floor"
+    file_path:
+      - "noise/Noise 9kHz-100MHz.csv"
+      - "noise/Noise 100MHz-50GHz.csv"
+    reader_settings:
+      file_format: "text"
+      skip_rows: 1
+      file_frequency_unit: "Hz"
+      data_start_marker: "DATA"
+      delimiter: ","
+#      use_columns: [ 3, 5 ]
+#      nan_values: [ -893.01029995664 ]
+    columns_mapping:
+      frequency: 3
+      value: 5

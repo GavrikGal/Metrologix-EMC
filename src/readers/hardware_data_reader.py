@@ -46,7 +46,7 @@ class HardwareDataReader:
             if data_start_marker:
                 for idx, line in enumerate(lines):
                     if data_start_marker in line:
-                        start_idx = idx + 1
+                        start_idx = idx + 1 + skip_rows
                         break
                 else:
                     raise ValueError(

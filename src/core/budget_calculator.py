@@ -12,8 +12,6 @@ class CISPRBudgetCalculator:
         budget_components = task.config.get('budget_components', [])
         calculated_rows = []
 
-        # Создаем плотную сетку частот для поиска максимума погрешности внутри полосы задачи
-        test_frequencies = np.linspace(task.frequency_min_hz, task.frequency_max_hz, num=200)
 
         for item in budget_components:
             device_role = item.get('device_role')
@@ -31,6 +29,15 @@ class CISPRBudgetCalculator:
                     task.frequency_min_hz, task.frequency_max_hz
                 )
 
+                # 🌟 ИСПРАВЛЕНИЕ: Выбор текстовой метки для исходного значения
+                if not parameter.uncertainty_trace.is_symmetric:
+                    if max_u_raw > 0:
+                        raw_value_display = f"+{max_u_raw:.1f} / 0.0"
+                    else:
+                        raw_value_display = "0"
+                else:
+                    raw_value_display = round(max_u_raw, 4)
+
                 dist_type = parameter.uncertainty_trace.distribution_type.upper()
                 if dist_type == 'NORMAL':
                     k_val = parameter.uncertainty_trace.k_factor
@@ -39,12 +46,12 @@ class CISPRBudgetCalculator:
                 else:
                     dist_str = dist_type
             else:
-                max_u_raw, u_std_val, dist_str = 0.0, 0.0, "NONE"
+                raw_value_display, u_std_val, dist_str = 0.0, 0.0, "NONE"
 
             calculated_rows.append({
                 'name': item.get('component_name'),
                 'device': f"{device.name} [{device_role}]",
-                'raw_val': round(max_u_raw, 4),
+                'raw_val': raw_value_display,
                 'dist': dist_str,
                 'u_std': round(u_std_val, 4)
             })

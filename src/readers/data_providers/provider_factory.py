@@ -1,6 +1,7 @@
 # src/readers/data_providers/provider_factory.py
 from .base_provider import BaseDataProvider
 from .constant_provider import ConstantDataProvider
+from .noise_floor_provider import NoiseFloorDataProvider
 from .table_provider import TableDataProvider
 from .calculated_trace_difference_provider import CalculatedTraceDifferenceProvider
 
@@ -13,7 +14,9 @@ class DataProviderFactory:
             return ConstantDataProvider(root_dir, config)
         elif st == 'table':
             return TableDataProvider(root_dir, config)
-        elif st == 'calculated_substitution':
+        elif st == 'calculated_trace_difference':
             return CalculatedTraceDifferenceProvider(root_dir, config)
+        elif st == 'calculated_noise_floor':
+            return NoiseFloorDataProvider(root_dir, config)
         else:
             raise ValueError(f"Неизвестный тип источника данных: {source_type}")

@@ -23,7 +23,7 @@ hardware_library_path: "hardware_library"
 logging_setup:
   level: "DEBUG"                 # Уровень детализации: "DEBUG", "INFO", "WARNING", "ERROR"
   log_to_console: true          # Выводить ли логи в консоль
-  log_to_file: true             # Записывать ли логи в файл на диске
+  log_to_file: false             # Записывать ли логи в файл на диске
   file_name: "metrologix.log"   # Имя файла лога (создастся в корне или в output)
 #  format: "%(asctime)s [%(module_name)s] [%(levelname)s] %(message)s"
 #  date_format: "%Y-%m-%d %H:%M:%S"

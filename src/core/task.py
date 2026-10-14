@@ -46,7 +46,8 @@ class Task:
             'f_max': self.frequency_max_hz,
             'reader_settings': {
                 'file_format': limit_settings.get('file_format', 'text'),
-                'skip_rows': limit_settings.get('skip_rows', 1)
+                'skip_rows': limit_settings.get('skip_rows', 1),
+                'file_frequency_unit': limit_settings.get('file_frequency_unit', 'MHz')
             },
             'columns_mapping': {'frequency': 0, 'value': 1, 'uncertainty': 2}
         })

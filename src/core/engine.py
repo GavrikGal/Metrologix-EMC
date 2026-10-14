@@ -29,7 +29,7 @@ class MetrologixEngine:
         self.hardware.build_tract(setup_cfg)
 
         self.logger.info("Сканирование и обработка файлов калибровки оборудования...")
-        self.hardware.process_all_devices()
+        self.hardware.process_all_devices(self.task)
 
         # 2. Расчет метрологического бюджета СИСПР (Чистая математика ядра)
         self.logger.info("Запуск метрологического калькулятора СИСПР 16-4-2...")

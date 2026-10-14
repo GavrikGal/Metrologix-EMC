@@ -21,3 +21,36 @@ class TraceManipulator:
         aligned_b = trace_b.align_to_grid(union_grid)
 
         return aligned_a, aligned_b
+
+    @staticmethod
+    def join_sequences(traces: list[Trace]) -> Trace:
+        """
+        МЕТРОЛОГИЧЕСКОЕ СКЛЕИВАНИЕ ПОСЛЕДОВАТЕЛЬНОСТЕЙ:
+        Склеивает последовательные файлы диапазонов шумов по вертикали.
+        Сохраняет обе точки на стыках диапазонов для точного
+        воспроизведения изменения RBW приемника
+        """
+        if not traces:
+            raise ValueError("[TraceManipulator] Список трасс для склеивания пуст.")
+        if len(traces) == 1:
+            return traces
+
+        # Последовательно склеиваем массивы всех переданных кусков (декад/диапазонов)
+        all_freqs = np.concatenate([t.frequencies for t in traces])
+        all_values = np.concatenate([t.values for t in traces])
+
+        # Выполняем СТАБИЛЬНУЮ сортировку (mergesort).
+        # Она гарантирует, что если частоты равны (точка стыка),
+        # то порядок следования точек из файлов сохранится без искажений!
+        sort_indices = np.argsort(all_freqs, kind='mergesort')
+
+        final_freqs = all_freqs[sort_indices]
+        final_values = all_values[sort_indices]
+
+        # Возвращаем единый непрерывный объект Trace, сохранивший все физические ступеньки
+        return Trace(
+            frequencies=final_freqs,
+            values=final_values,
+            frequencies_units=traces[0].frequencies_units,
+            values_units=traces[0].values_units
+        )

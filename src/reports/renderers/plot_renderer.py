@@ -1,10 +1,13 @@
 # src/reports/renderers/plot_renderer.py
+import logging
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 from src.reports.base_renderer import BaseRenderer
 from src.core.math_models import FrequencyConverter
 from src.reports.utils.name_builder import NameBuilder
+
+logger = logging.getLogger("Metrologix")
 
 
 class PlotRenderer(BaseRenderer):
@@ -53,7 +56,9 @@ class PlotRenderer(BaseRenderer):
         filename = NameBuilder.build_standard_filename(device_config, freqs_hz.min(), freqs_hz.max(), ".png")
         os.makedirs(output_dir, exist_ok=True)
         plt.savefig(os.path.join(output_dir, filename), dpi=200, bbox_inches='tight')
+        logger.info(f'Создан график: {filename}')
         plt.close()
+
 
     # =========================================================================
     # МИКРО-МЕТОДЫ ОТРИСОВКИ СЛОЕВ (САМОДОКУМЕНТИРУЕМЫЙ КОД)

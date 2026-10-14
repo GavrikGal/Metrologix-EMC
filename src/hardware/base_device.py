@@ -1,6 +1,8 @@
 import os
 import yaml
 from abc import ABC, abstractmethod
+
+from src.core.task import Task
 from src.readers.data_providers.provider_factory import DataProviderFactory
 
 
@@ -16,12 +18,16 @@ class BaseDevice(ABC):
         self.name = self.config.get('device_name', 'Unknown Device')
         self.processed_parameters = {}  # Хранилище: { "param_name": Parameter }
 
-    def process_device_data(self) -> None:
+    def process_device_data(self, task: Task) -> None:
         """Автоматическая сборка параметров из конфигурации прибора"""
         params_cfg = self.config.get('parameters', {})
 
         for param_name, target_cfg in params_cfg.items():
             src_type = target_cfg.get('source_type')
+
+            # ДИНАМИЧЕСКИЙ ПРОБРОС ТРАССЫ ЛИМИТОВ ДЛЯ РАСЧЕТА ШУМОВ СИСПР
+            if src_type == 'calculated_noise_floor':
+                target_cfg['task_limit_trace'] = task.limit_trace
 
             provider = DataProviderFactory.get_provider(
                 source_type=src_type,

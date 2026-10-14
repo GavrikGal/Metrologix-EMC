@@ -9,11 +9,15 @@ budget_range_settings:
 
 # Предельно допустимые значения для общего бюджета
 limits:
-  limit_type: "table"                # or constant
-  limit_value: -1
-  file_format: "excel"
-  skip_rows: 1
-  limit_path: "CISPR 32 cond class B.xlsx"
+  limit_type: "constant"                # or constant
+  limit_value: 10.0
+
+#limits:
+#  limit_type: "table"                # or constant
+#  limit_value: -1
+#  file_format: "excel"
+#  skip_rows: 1
+#  limit_path: "CISPR 32 cond class B.xlsx"
 
 
 hardware_setup:
@@ -39,6 +43,10 @@ budget_components:
   - component_name: "Receiver Pulse Repetition Response"
     device_role: "receiver"
     target_parameter: "Pulse_Repetition_Frequency_Response"
+
+  - component_name: "Receiver Noise Floor"
+    device_role: "receiver"
+    target_parameter: "Receiver_Noise_Floor"
 
   - component_name: "Cable System Attenuation"
     device_role: "cable_system"
