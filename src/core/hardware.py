@@ -37,9 +37,13 @@ class Hardware:
 
     def process_all_devices(self, task: Task) -> None:
         """Запускает чтение и кэширование параметров для всего оборудования"""
+        # Пасс 1: Загружаем все базовые паспорта поверки, КСВН и затухания
         for device in self.devices.values():
-            logger.info(f"Инициализация компонента: [{device.name}]")
             device.process_device_data(task)
+
+        # Пасс 2: Выполняем сложные системные вычисления (рассогласование)
+        for device in self.devices.values():
+            device.process_calculated_parameters(task, self)
 
     def get_device(self, device_role: str):
         return self.devices.get(device_role)

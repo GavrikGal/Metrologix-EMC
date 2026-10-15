@@ -72,6 +72,10 @@ budget_components:
     device_role: "main"
     target_parameter: "Main_Noise_Floor"
 
+  - component_name: "Tract Mismatch Uncertainty"
+    device_role: "cable_system"               # Закреплен за кабелем, так как он лежит между приборами
+    target_parameter: "Tract_Mismatch"        # Строго имя ключа из CalculatedMismatchProvider
+
 
 
 
@@ -184,6 +188,18 @@ protocol_output:
           x_scale: "linear"
           show_limit_line: false
           table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+    - device_id: "cable_system"
+      target_parameter: "Tract_Mismatch"
+      show_uncertainty: false                # Сама эта кривая уже является границей погрешности
+      sub_plots:
+        - title: "Tract Mismatch (delta M) - Band B"
+          unit: "MHz"
+          freq_min: 0.15                     # 150 кГц
+          freq_max: 30.0                     # 30 МГц
+          x_scale: "linear"
+          show_limit_line: false
+          table_points_count: 20
 
           # 💡 КАСТОМИЗАЦИЯ СТИЛЯ ГРАФИКА
 #          style_settings:

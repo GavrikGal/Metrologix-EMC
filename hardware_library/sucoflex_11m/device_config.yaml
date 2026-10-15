@@ -55,3 +55,18 @@ parameters:
       delimiter: ","
       use_columns: [0, 1, 2, 3]
       nan_values: [-893.01029995664]
+
+  S11:
+    source_type: "constant"
+    value: 1.2
+    f_min: 9000.0
+    f_max: 40000000000.0
+
+  S22:
+    source_type: "constant"
+    value: 1.2
+    f_min: 9000.0
+    f_max: 40000000000.0
+
+  Tract_Mismatch:
+    source_type: "calculated_mismatch"

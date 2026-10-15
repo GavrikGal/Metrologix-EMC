@@ -74,3 +74,18 @@ parameters:
     columns_mapping:
       frequency: 3
       value: 5
+
+  Receiver_VSWR:
+    source_type: "constant"
+    value: 1.134
+    min_hz: 2.0
+    max_hz: 44000000000.0
+
+#  Receiver_VSWR:
+#    source_type: "table"
+#    file_path: "vswr_spec.xlsx"
+#    reader_settings:
+#      file_format: "excel"
+#      skip_rows: 1
+#      file_frequency_unit: "Hz"
+#    columns_mapping: { frequency: 0, value: 1 }

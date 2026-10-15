@@ -1,5 +1,6 @@
 # src/readers/data_providers/provider_factory.py
 from .base_provider import BaseDataProvider
+from .calculated_mismatch_provider import CalculatedMismatchProvider
 from .constant_provider import ConstantDataProvider
 from .noise_floor_provider import NoiseFloorDataProvider
 from .table_provider import TableDataProvider
@@ -18,5 +19,7 @@ class DataProviderFactory:
             return CalculatedTraceDifferenceProvider(root_dir, config)
         elif st == 'calculated_noise_floor':
             return NoiseFloorDataProvider(root_dir, config)
+        elif st == 'calculated_mismatch':
+            return CalculatedMismatchProvider(root_dir, config)
         else:
             raise ValueError(f"Неизвестный тип источника данных: {source_type}")
