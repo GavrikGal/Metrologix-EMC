@@ -1,0 +1,28 @@
+device_name: "Main"
+device_short_id: "main"
+serial_number: "1"
+device_type: "main"
+
+# РАБОЧИЙ ДИАПАЗОН ПРИБОРА ПАСПОРТНЫЙ
+operating_frequency_range:
+  min_hz: 2.0                          # От 2 Гц
+  max_hz: 1000000000.0                # До 1 ГГц
+
+# ОПИСАНИЕ СВИДЕТЕЛЬСТВА О ПОВЕРКЕ ПРИЕМНИКА
+parameters:
+  # 1. Минимальный уровень шума
+  Main_Noise_Floor:
+    source_type: "calculated_noise_floor"
+    file_path: "noise/Main Noise 9kHz-100MHz.csv"
+
+    reader_settings:
+      file_format: "text"
+      skip_rows: 1
+      file_frequency_unit: "Hz"
+      data_start_marker: "DATA"
+      delimiter: ","
+#      use_columns: [ 3, 5 ]
+#      nan_values: [ -893.01029995664 ]
+    columns_mapping:
+      frequency: 3
+      value: 5

@@ -40,7 +40,9 @@ class NoiseFloorDataProvider(BaseDataProvider):
             )
             freqs_hz = df[columns_mapping['frequency']].values.astype(float) * ratio
             qpd_values = df[columns_mapping['value']].values.astype(float)
+
             loaded_segments.append(Trace(freqs_hz, qpd_values))
+
 
         full_noise_trace = TraceManipulator.join_sequences(loaded_segments)
 

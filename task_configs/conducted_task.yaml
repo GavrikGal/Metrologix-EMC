@@ -28,6 +28,7 @@ hardware_setup:
   cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
   reading_process: "operator_reading" # Папка оператора
   lisn: "nslk_8127"                   # Папка эквивалента сети
+  main: "main"                        # Папка сети питания
 
 # ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
 budget_components:
@@ -67,6 +68,10 @@ budget_components:
     device_role: "lisn"
     target_parameter: "Frequency_Interpolation"
 
+  - component_name: "Main Noise Floor"
+    device_role: "main"
+    target_parameter: "Main_Noise_Floor"
+
 
 
 
@@ -81,7 +86,12 @@ hardware_corrections_output:
       invert_sign: true               # Преобразуем затухание в Loss (умножаем на -1)
       frequency_grid_type: "custom_list"      # Метод: фиксированный список частот
       custom_frequencies_unit: "MHz"
-      custom_frequencies: [ 0.15, 1.0, 10.0, 30.0, 100.0, 500.0, 1000.0, 18000.0, 40000.0 ]
+      custom_frequencies: [ 0.0, 0.1, 0.2, 0.3, 0.5,
+                            1.0, 2.0, 3.0, 5.0,
+                            10.0, 20.0, 30.0, 50.0,
+                            100.0, 200.0, 300.0, 500.0,
+                            1000.0, 2000.0, 3000.0, 5000.0,
+                            10000.0, 20000.0, 30000.0, 40000.0 ]
 
     receiver:
       export: true

@@ -1,11 +1,15 @@
 # src/core/hardware.py
+import logging
 import os
 
 from src.core.task import Task
+from src.core.utils import logger
 from src.hardware.rf_cable.rf_cable import RFCableSystem
 from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.lisn.lisn import LISN
 from src.hardware.process.measurement_process import MeasurementProcess
+
+logger = logging.getLogger("Metrologix")
 
 
 class Hardware:
@@ -34,6 +38,7 @@ class Hardware:
     def process_all_devices(self, task: Task) -> None:
         """Запускает чтение и кэширование параметров для всего оборудования"""
         for device in self.devices.values():
+            logger.info(f"Инициализация компонента: [{device.name}]")
             device.process_device_data(task)
 
     def get_device(self, device_role: str):

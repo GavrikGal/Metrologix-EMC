@@ -33,7 +33,7 @@ class TraceManipulator:
         if not traces:
             raise ValueError("[TraceManipulator] Список трасс для склеивания пуст.")
         if len(traces) == 1:
-            return traces
+            return traces[0]
 
         # Последовательно склеиваем массивы всех переданных кусков (декад/диапазонов)
         all_freqs = np.concatenate([t.frequencies for t in traces])

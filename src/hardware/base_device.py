@@ -6,7 +6,7 @@ from src.core.task import Task
 from src.readers.data_providers.provider_factory import DataProviderFactory
 
 
-
+# todo: Как-будто классы девайсов теперь бесполезны
 class BaseDevice(ABC):
     def __init__(self, device_dir_path: str) -> None:
         self.device_dir_path = device_dir_path
