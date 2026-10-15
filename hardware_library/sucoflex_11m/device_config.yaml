@@ -23,7 +23,7 @@ hardware_data_info:
 
 parameters:
   S21:
-    source_type: "calculated_substitution"
+    source_type: "calculated_trace_difference"
 
     # ВАРИАНТ А: Просто указываем папки. Ридер сам заберет все файлы из них!
 #    system1_baseline: "raw_data/sys1"

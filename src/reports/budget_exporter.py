@@ -1,7 +1,10 @@
 # Файл: src/reports/budget_exporter.py
 import os
+import logging
 import numpy as np
 import openpyxl
+
+logger = logging.getLogger("Metrologix")
 
 
 class ExcelExporter:
@@ -78,5 +81,11 @@ class ExcelExporter:
         # Сохранение итогового файла книги
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, f"Uncertainty_Budget_{task_name}.xlsx")
-        wb.save(file_path)
-        print(f"[ExcelExporter] Базовый цифровой отчет успешно сохранен: {file_path}")
+
+        try:
+            wb.save(file_path)
+            logger.info(f"Базовый цифровой отчет успешно сохранен: {file_path}")
+        except PermissionError:
+            logger.error(f"ОШИБКА ДОСТУПА: Не удалось сохранить бюджет неопределенности!")
+            logger.error(f"Пожалуйста, ЗАКРОЙТЕ файл '{os.path.basename(file_path)}' в Excel и перезапустите программу.\n")
+            return
