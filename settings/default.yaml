@@ -1,0 +1,32 @@
+visualizer_setup:
+  plots_settings:
+    unit: "MHz"
+    x_scale: "linear"           # "log" / "linear"
+    show_limit_line: false
+    limit_value_db: -1.0
+    table_points_count: 30      # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+  style_settings:
+    line_color: "tab:blue"      # Темно-синий цвет основной кривой прибора
+    line_width: 1.2            # Толщина основной линии
+    uncertainty_color: "tab:blue" # Базовый цвет коридора (программа сама сделает его прозрачным)
+    uncertainty_alpha: 0.20    # Коэффициент прозрачности коридора неопределенности
+    limit_color: "tab:red"     # Насыщенный красный цвет для линии лимита
+    limit_width: 1.0           # Толщина линии лимита
+    limit_style: "--"          # Пунктирная линия лимита
+    shading_color: "lightgrey"   # Светло-серый цвет для затемнения нерабочих зон
+    shading_alpha: 0.5         # Плотность затемнения нерабочих зон
+
+limit_library_path: "task_configs/limits"
+hardware_library_path: "hardware_library"
+
+logging_setup:
+  level: "DEBUG"                 # Уровень детализации: "DEBUG", "INFO", "WARNING", "ERROR"
+  log_to_console: true          # Выводить ли логи в консоль
+  log_to_file: false             # Записывать ли логи в файл на диске
+  file_name: "metrologix.log"   # Имя файла лога (создастся в корне или в output)
+#  format: "%(asctime)s [%(module_name)s] [%(levelname)s] %(message)s"
+#  date_format: "%Y-%m-%d %H:%M:%S"
+  format: "%(asctime)s [%(levelname)s]: [%(module_name)s] %(message)s"
+  date_format: "%H:%M:%S"
+  use_colors: true              # Включить раскраску для консоли
