@@ -18,6 +18,7 @@ visualizer_setup:
     shading_alpha: 0.5         # Плотность затемнения нерабочих зон
 
 limit_library_path: "task_configs/limits"
+noise_deviation_path: "task_configs/signal and noise deviation"
 hardware_library_path: "hardware_library"
 
 logging_setup:

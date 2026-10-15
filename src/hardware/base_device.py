@@ -28,6 +28,7 @@ class BaseDevice(ABC):
             # ДИНАМИЧЕСКИЙ ПРОБРОС ТРАССЫ ЛИМИТОВ ДЛЯ РАСЧЕТА ШУМОВ СИСПР
             if src_type == 'calculated_noise_floor':
                 target_cfg['task_limit_trace'] = task.limit_trace
+                target_cfg['cispr_graph_trace'] = task.noise_deviation_trace
 
             provider = DataProviderFactory.get_provider(
                 source_type=src_type,

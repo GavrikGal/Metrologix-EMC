@@ -7,17 +7,20 @@ budget_range_settings:
   freq_max: 30.0                       # Конец полосы B (30 МГц)
   unit: "MHz"                          # Единица измерения частоты диапазона
 
-# Предельно допустимые значения для общего бюджета
-limits:
-  limit_type: "constant"                # or constant
-  limit_value: 10.0
+# Целевой детектор для расчетов: квазипик ("quasipeak") или пик ("peak")
+target_detector: "quasipeak"
 
+# Предельно допустимые значения для общего бюджета
 #limits:
-#  limit_type: "table"                # or constant
-#  limit_value: -1
-#  file_format: "excel"
-#  skip_rows: 1
-#  limit_path: "CISPR 32 cond class B.xlsx"
+#  limit_type: "constant"                # or table
+#  limit_value: 11.0
+
+limits:
+  limit_type: "table"                # or constant
+  limit_value: -1
+  file_format: "excel"
+  skip_rows: 1
+  limit_path: "CISPR 32 cond class B.xlsx"
 
 
 hardware_setup:

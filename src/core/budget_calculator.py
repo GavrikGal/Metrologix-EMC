@@ -34,7 +34,7 @@ class CISPRBudgetCalculator:
                     if max_u_raw > 0:
                         raw_value_display = f"+{max_u_raw:.2f} / 0.00"
                     else:
-                        raw_value_display = "0"
+                        raw_value_display = 0.00
                 else:
                     raw_value_display = round(max_u_raw, 4)
 

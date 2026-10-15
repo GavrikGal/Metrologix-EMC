@@ -14,33 +14,33 @@ class MetrologixEngine:
 
     def __init__(self, settings_config: dict, task_config_path: str, root_dir: str) -> None:
         self.settings = settings_config
+        # 1. Инициализируем задачу (она сама внутри себя загрузит и лимиты, и кривую СИСПР)
         self.task = Task(task_config_path, self.settings, root_dir)
-
         self.logger = logging.getLogger("Metrologix")
 
-        hw_lib_absolute = os.path.join(root_dir, self.settings.get('hardware_library_path'))
-        self.hardware = Hardware(hw_lib_absolute)
+        hardware_library_dir = self.settings.get('hardware_library_path', 'hardware_library')
+        hardware_library_absolute = os.path.join(root_dir, hardware_library_dir)
+        self.hardware = Hardware(hardware_library_absolute)
 
     def run(self) -> None:
         self.logger.info(f"Старт выполнения измерительной сессии: {self.task.name}")
 
-        # 1. Сборка измерительной схемы и запуск чтения сырых файлов приборов
-        setup_cfg = self.task.config.get('hardware_setup', {})
-        self.hardware.build_tract(setup_cfg)
+        # 🌟 1. Сборка измерительного тракта железа
+        hardware_setup_config = self.task.config.get('hardware_setup', {})
+        self.hardware.build_tract(hardware_setup_config)
 
-        self.logger.info("Сканирование и обработка файлов калибровки оборудования...")
+        # 🌟 2. Обработка девайсов (передаем только self.task, старый код чтения кривой отсюда УДАЛЕН)
         self.hardware.process_all_devices(self.task)
 
-        # 2. Расчет метрологического бюджета СИСПР (Чистая математика ядра)
-        self.logger.info("Запуск метрологического калькулятора СИСПР 16-4-2...")
+        # 3. Расчет метрологического бюджета СИСПР 16-4-2 (Чистая математика ядра)
+        self.logger.info(f"Запуск метрологического калькулятора СИСПР 16-4-2...")
         budget_data = CISPRBudgetCalculator.calculate_emc_budget(self.task, self.hardware)
 
-        # 3. Генерация Excel-книги суммарного бюджета
+        # 4. Передача результатов расчета на генерацию Excel-книги бюджета
         frequency_range_string = FrequencyConverter.format_frequency_range(
-            self.task.frequency_min_hz,  # 🌟 ИСПРАВЛЕНО НА ПОЛНОЕ ИМЯ
-            self.task.frequency_max_hz  # 🌟 ИСПРАВЛЕНО НА ПОЛНОЕ ИМЯ
+            self.task.frequency_min_hz,
+            self.task.frequency_max_hz
         )
-
         ExcelExporter.export_emc_budget(
             output_dir=self.task.output_dir,
             task_name=self.task.name,
@@ -49,22 +49,21 @@ class MetrologixEngine:
             budget_data=budget_data
         )
 
-        # 🌟 4. ЛОГИКА УПРАВЛЕНИЯ ВЫВОДОМ ОТЧЕТОВ СИЛАМИ ENGINE 🌟
+        # 5. Анализ конфигурации задачи силами контроллера Engine для точечного вывода отчетов
         orchestrator = ReportOrchestrator(self.settings, self.task, self.hardware)
 
-        proto_cfg = self.task.config.get('protocol_output', {})
-        corr_cfg = self.task.config.get('hardware_corrections_output', {})
+        protocol_config = self.task.config.get('protocol_output', {})
+        corrections_config = self.task.config.get('hardware_corrections_output', {})
 
-        # Проверяем флаги в конфигурации текущей задачи
-        if proto_cfg and proto_cfg.get('generate_plots', False):
+        if protocol_config and protocol_config.get('generate_plots', False):
             self.logger.info("Формирование спектральных графиков отчетов...")
             orchestrator.generate_plots()
 
-        if proto_cfg and proto_cfg.get('generate_data_tables', False):
+        if protocol_config and protocol_config.get('generate_data_tables', False):
             self.logger.info("Выгрузка таблиц реальных физических отсчетов для протокола...")
             orchestrator.generate_data_tables()
 
-        if corr_cfg and corr_cfg.get('generate_corrections', False):
+        if corrections_config and corrections_config.get('generate_corrections', False):
             self.logger.info("Экспорт файлов амплитудных коррекций для памяти приборов...")
             orchestrator.generate_hardware_corrections()
 
