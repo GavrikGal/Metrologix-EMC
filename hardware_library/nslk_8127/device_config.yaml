@@ -60,6 +60,7 @@ parameters:
   LISN_VSWR:
     source_type: "constant"
     value: 1.2                       # Нормативный дефолт для эквивалента сети по СИСПР
+    values_units: "SWR"
     f_min: 9000.0
     f_max: 30000000.0
 

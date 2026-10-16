@@ -15,42 +15,24 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
 
     def get_parameter(self) -> Parameter:
         reader_settings = self.config.get('reader_settings', {})
-        columns_mapping = reader_settings.get('use_columns', )  # [Частота, Трасса1, Трасса2...]
+        columns_mapping = reader_settings.get('use_columns', )
 
-        # 1. Загружаем сырые данные Системы 1 и Системы 2 из файлов (метод ниже больше не заглушка!)
-        system1_param = self._load_system_raw_parameter(self.config['system1_baseline'], reader_settings,
-                                                        columns_mapping)
-        system2_param = self._load_system_raw_parameter(self.config['system2_with_cable'], reader_settings,
-                                                        columns_mapping)
+        system1_param = self._load_system_raw_parameter(self.config['system1_baseline'], reader_settings, columns_mapping)
+        system2_param = self._load_system_raw_parameter(self.config['system2_with_cable'], reader_settings, columns_mapping)
 
-        # 2. Склеиваем сетки частот и выравниваем ТРАССЫ ЗНАЧЕНИЙ через наш манипулятор
-        aligned_trace1, aligned_trace2 = TraceManipulator.concatenate_grids(
-            system1_param.value_trace,
-            system2_param.value_trace
-        )
+        # 🌟 КРАСОТА АЛГЕБРЫ ЯДРА: Вычитаем один объект из другого оператором!
+        # Иммутабельный оператор '-' вернет новый Parameter, сохранив исходные системы целыми
+        final_parameter = system2_param - system1_param
 
-        # 3. Склеиваем сетки частот и выравниваем ТРАССЫ НЕОПРЕДЕЛЕННОСТЕЙ
-        aligned_unc1, aligned_unc2 = TraceManipulator.concatenate_grids(
-            system1_param.uncertainty_trace,
-            system2_param.uncertainty_trace
-        )
+        # Задаем динамическое имя параметра из YAML-конфигурации прибора
+        final_parameter.name = self.config.get('parameter_system_name', 'S21')
 
-        # 4. Физический расчет разности систем на единой объединенной сетке
-        calculation_grid = aligned_trace1.frequencies
-        calculated_values = aligned_trace2.values - aligned_trace1.values
-        calculated_u_type_a = np.sqrt(aligned_unc1.values ** 2 + aligned_unc2.values ** 2)
-
-        # 5. Упаковка в финальный Parameter
-        value_trace = Trace(calculation_grid, calculated_values)
-        uncertainty_trace = Uncertainty(calculation_grid, calculated_u_type_a, distribution_type='normal', k_factor=1.0)
-
-        final_parameter = Parameter(value_trace, uncertainty_trace)
-
-        # Передаем оригинальные многомерные матрицы для отчетов протокола
+        # Переносим сырые многомерные матрицы для отчетов протокола
         final_parameter.sys1_traces = system1_param.sys1_traces
         final_parameter.sys2_traces = system2_param.sys2_traces
 
         return final_parameter
+
 
     def _load_system_raw_parameter(self, paths_config, reader_settings, columns_mapping) -> Parameter:
         """Внутренний метод: последовательно считывает файлы системы, применяет offset и считает СКО"""

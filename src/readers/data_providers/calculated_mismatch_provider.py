@@ -5,74 +5,65 @@ from .base_provider import BaseDataProvider
 from src.core.data_structures.parameter import Parameter
 from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
-from src.core.utils.trace_manipulator import TraceManipulator
+from src.core.utils.trace_manipulator import TraceManipulator  # 🌟 Импортируем манипулятор
 
 logger = logging.getLogger("Metrologix")
 
 
 class CalculatedMismatchProvider(BaseDataProvider):
-    """Провайдер динамического расчета неопределенности рассогласования (delta M) на базе S-параметров"""
-
-    @staticmethod
-    def _vswr_to_gamma(vswr_values: np.ndarray) -> np.ndarray:
-        """Перевод КСВН (SWR) в модуль коэффициента отражения |Gamma|"""
-        vswr_clipped = np.clip(vswr_values, 1.0, None)
-        return (vswr_clipped - 1.0) / (vswr_clipped + 1.0)
-
-    @staticmethod
-    def _db_loss_to_linear_s21(db_values: np.ndarray) -> np.ndarray:
-        """Перевод затухания S21 из дБ в линейный масштаб коэффициента передачи (в разы)"""
-        return 10 ** (-np.abs(db_values) / 20.0)
+    """Провайдер динамического расчета неопределенности рассогласования (delta M) по СИСПР 16-4-2"""
 
     def get_parameter(self) -> Parameter:
-        logger.info("Запуск синтеза параметра рассогласования тракта по S-параметрам...")
+        # 1. Извлекаем трассы из конфигурации, переданные Движком
+        source_vswr_trace = self.config.get('source_vswr_trace')  # КСВН LISN / Аттенюатора (SWR)
+        load_vswr_trace = self.config.get('load_vswr_trace')  # КСВН Приемника (SWR)
 
-        # 1. Извлекаем трассы из конфигурации
-        source_vswr_trace = self.config.get('source_vswr_trace')  # КСВН ЭСП (LISN)
-        load_vswr_trace = self.config.get('load_vswr_trace')  # КСВН Приемника
+        cable_s21_trace = self.config.get('cable_s21_trace')  # Затухание кабеля S21 (dB)
+        cable_s11_trace = self.config.get('cable_s11_trace')
+        cable_s22_trace = self.config.get('cable_s22_trace')
 
-        cable_s21_trace = self.config.get('cable_s21_trace')  # Коэффициент передачи кабеля (S21)
-        cable_s11_trace = self.config.get('cable_s11_trace')  # Коэффициент отражения входа (S11)
-        cable_s22_trace = self.config.get('cable_s22_trace')  # Коэффициент отражения выхода (S22)
+        # 2. МЕТРОЛОГИЧЕСКИЙ ДЕФОЛТ ДЛЯ КСВН КАБЕЛЯ
+        # Если КСВН входа/выхода кабеля отсутствуют в паспорте, создаем константы 1.2 на сетке S21
+        f_min, f_max = cable_s21_trace.frequencies.min(), cable_s21_trace.frequencies.max()
+        s11_src = cable_s11_trace if cable_s11_trace else Trace.create_constant(f_min, f_max, 1.2, values_units='SWR')
+        s22_src = cable_s22_trace if cable_s22_trace else Trace.create_constant(f_min, f_max, 1.2, values_units='SWR')
 
-        if not (source_vswr_trace and load_vswr_trace and cable_s21_trace):
-            raise ValueError("[MismatchProvider] Отсутствуют критические S-параметры/КСВН для расчета рассогласования!")
+        # 3. 🌟 ЕДИНОВРЕМЕННОЕ ВЫРАВНИВАНИЕ ВСЕХ СЕТОК ЧАСТОТ КАСКАДА (O(N))
+        # Закидываем все 5 трасс в наш манипулятор. Он соединит их оси и вернет кортеж идеально выровненных объектов!
+        aligned_source, aligned_load, aligned_s21, aligned_s11, aligned_s22 = TraceManipulator.concatenate_grids([
+            source_vswr_trace,
+            load_vswr_trace,
+            cable_s21_trace,
+            s11_src,
+            s22_src
+        ])
 
-        # 2. МЕТРОЛОГИЧЕСКОЕ СОЕДИНЕНИЕ СЕТОК ЧАСТОТ ЧЕРЕЗ ЧЕРНЫЙ ЯЩИК
-        _, aligned_load = TraceManipulator.concatenate_grids(source_vswr_trace, load_vswr_trace)
-        calculation_grid = aligned_load.frequencies
+        # 4. РАДИОТЕХНИЧЕСКАЯ КОНВЕРТАЦИЯ ШКАЛ НА ЕДИНОЙ СЕТКЕ FREQUENCIES
+        gamma_g = aligned_source.swr_to_gamma()  # Модуль отражения источника
+        gamma_l = aligned_load.swr_to_gamma()  # Модуль отражения нагрузки
+        s11_lin = aligned_s11.swr_to_gamma()  # Модуль отражения входа кабеля
+        s22_lin = aligned_s22.swr_to_gamma()  # Модуль отражения выхода кабеля
+        s21_lin = aligned_s21.to_linear()  # Коэффициент передачи кабеля в разах
 
-        # Ленивая интерполяция всех участников на единый расчетный базис частот задачи
-        vswr_source = source_vswr_trace.get_values_for_frequencies(calculation_grid)
-        vswr_load = load_vswr_trace.get_values_for_frequencies(calculation_grid)
-        loss_cable_db = cable_s21_trace.get_values_for_frequencies(calculation_grid)
+        # 5. ВЫЧИСЛЕНИЕ ФОРМУЛЫ СИСПР НА БЕЗОПАСНЫХ ОДНОМЕРНЫХ МАССИВАХ
+        # Так как сетки частот объектов теперь на 100% идентичны, умножение и сложение пройдут без ошибок shapes
+        comp_1 = gamma_g * s11_lin
+        comp_2 = gamma_l * s22_lin
+        comp_3 = gamma_g * gamma_l * s21_lin
 
-        # Обработка КСВН кабеля S11/S22 (если не заданы в паспорте — метрологически принимаем дефолт 1.2)
-        vswr_cable_in = cable_s11_trace.get_values_for_frequencies(
-            calculation_grid) if cable_s11_trace else np.full_like(calculation_grid, 1.2)
-        vswr_cable_out = cable_s22_trace.get_values_for_frequencies(
-            calculation_grid) if cable_s22_trace else np.full_like(calculation_grid, 1.2)
+        # Покоординатно собираем сумму квадратов переотражений
+        rss_sum_values = (comp_1.values) ** 2 + (comp_2.values) ** 2 + (comp_3.values) ** 2
+        calculated_mismatch_limits = 8.7 * np.sqrt(rss_sum_values)
 
-        # 3. МАТЕМАТИЧЕСКИЙ ПЕРЕВОД В ЛИНЕЙНЫЕ МОДУЛИ КОЭФФИЦИЕНТОВ МАТРИЦЫ РАССЕЯНИЯ
-        gamma_g = self._vswr_to_gamma(vswr_source)  # |Gamma_source|
-        gamma_l = self._vswr_to_gamma(vswr_load)  # |Gamma_load|
-        s11 = self._vswr_to_gamma(vswr_cable_in)  # |S11| модуля отражения
-        s22 = self._vswr_to_gamma(vswr_cable_out)  # |S22| модуля отражения
-        s21 = self._db_loss_to_linear_s21(loss_cable_db)  # |S21| в разах
-
-        # 4. ВЫЧИСЛЕНИЕ ГРАНИЦ ПО ФОРМУЛЕ ГОСТ CISPR 16-4-2 (Покоординатно для СВЧ тракта)
-        rss_sum = (gamma_g * s11) ** 2 + (gamma_l * s22) ** 2 + (gamma_g * gamma_l * s21) ** 2
-        calculated_mismatch_limits = 8.7 * np.sqrt(rss_sum)
-
-        # 5. СИНТЕЗ ПАРАМЕТРА ДЛЯ ДВИЖКА
-        final_value_trace = Trace(calculation_grid, np.zeros_like(calculation_grid))
+        # 6. СИНТЕЗ ПАРАМЕТРА ДЛЯ ДВИЖКА
+        calculation_grid = gamma_g.frequencies
+        final_value_trace = Trace(calculation_grid, np.zeros_like(calculation_grid), values_units='dB')
         final_uncertainty_trace = Uncertainty(
             frequencies=calculation_grid,
             values=calculated_mismatch_limits,
-            distribution_type='u_shaped'  # Делитель sqrt(2)
+            values_units='dB',
+            distribution_type='u_shaped'
         )
 
-        logger.info(f"Расчет рассогласования по S-параметрам завершен. Точек: {len(calculation_grid)}, "
-                    f"Максимальный вклад погрешности: ±{calculated_mismatch_limits.max():.4f} дБ")
-
-        return Parameter(final_value_trace, final_uncertainty_trace)
+        param_name = self.config.get('parameter_system_name', 'Tract_Mismatch')
+        return Parameter(param_name, final_value_trace, final_uncertainty_trace)

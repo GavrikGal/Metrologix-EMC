@@ -47,7 +47,11 @@ class ReportOrchestrator:
                 f_max_hz = float(sub.get('freq_max')) * ratio
 
                 plot_freqs = np.linspace(f_min_hz, f_max_hz, num=400)
-                interp_v, interp_u = parameter.get_aligned_vectors(plot_freqs)
+                interp_v, interp_u = parameter.get_values_for_frequencies(plot_freqs)
+
+                # Защита: если пришел None (нет неопределенности), превращаем в нули для графика
+                if interp_u is None:
+                    interp_u = np.zeros_like(plot_freqs)
 
                 target_dir = os.path.join(self.task.output_dir, "plots", device_folder)
                 self.plot_renderer.render(target_dir, device.config, param_name, plot_freqs, interp_v, interp_u, sub)

@@ -1,0 +1,39 @@
+# hardware_library/attenuator_20db/device_config.yaml
+device_name: "Pasternack 20dB Coaxial Attenuator"
+device_short_id: "ATT-20dB"
+serial_number: "55555"
+device_type: "Attenuator"
+
+operating_frequency_range:
+  min_hz: 0.0
+  max_hz: 18000000000.0
+
+parameters:
+  # Коэффициент передачи (затухание константой 20 дБ)
+  S21:
+    source_type: "constant"
+    value: 20.0
+    f_min: 0.0
+    f_max: 18000000000.0
+    uncertainty:
+      type: "constant"
+      value: 0.15                    # Погрешность из паспорта аттенюатора
+      distribution: "normal"         # Поверка всегда идет по нормальному закону
+      k_factor: 2
+
+  # Входной КСВН аттенюатора
+  S11:
+    source_type: "constant"
+    value: 1.2
+    f_min: 0.0
+    f_max: 18000000000.0
+
+  # Выходной КСВН аттенюатора
+  S22:
+    source_type: "constant"
+    value: 1.2
+    f_min: 0.0
+    f_max: 18000000000.0
+
+  Tract_Mismatch:
+    source_type: "calculated_mismatch"

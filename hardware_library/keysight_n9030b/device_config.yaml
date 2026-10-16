@@ -78,6 +78,7 @@ parameters:
   Receiver_VSWR:
     source_type: "constant"
     value: 1.134
+    values_units: "SWR"
     min_hz: 2.0
     max_hz: 44000000000.0
 

@@ -1,6 +1,8 @@
 # src/reports/renderers/correction_renderer.py
 import os
 import numpy as np
+
+from src.core.data_structures.parameter import Parameter
 from src.core.math_models import FrequencyConverter
 from src.reports.base_renderer import BaseRenderer
 from src.reports.template_exporter import TemplateExporter
@@ -12,7 +14,7 @@ class CorrectionRenderer(BaseRenderer):
 
     def render(self, output_dir: str, device, param_name: str, settings: dict, target_frequencies: np.ndarray):
         parameter = device.processed_parameters[param_name]
-        interp_values, _ = parameter.get_aligned_vectors(target_frequencies)
+        interp_values, _ = parameter.get_values_for_frequencies(target_frequencies)
 
         rules = device.config.get('correction_export_rules', {})
         template_file = rules.get('template_file')

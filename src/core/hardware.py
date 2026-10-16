@@ -19,6 +19,7 @@ class Hardware:
         self.hardware_library_path = hardware_library_path
         self.devices = {}  # Хранилище: { "device_role": DeviceObject }
 
+
     def build_tract(self, hardware_setup_config: dict) -> None:
         """Регистрирует приборы в схеме по их уникальным ролям из конфигурации задачи"""
         for device_role, folder_name in hardware_setup_config.items():
@@ -35,15 +36,13 @@ class Hardware:
 
             self.devices[device_role] = device
 
+
     def process_all_devices(self, task: Task) -> None:
         """Запускает чтение и кэширование параметров для всего оборудования"""
-        # Пасс 1: Загружаем все базовые паспорта поверки, КСВН и затухания
         for device in self.devices.values():
+            logger.info(f"Инициализация компонента: [{device.name}]")
             device.process_device_data(task)
 
-        # Пасс 2: Выполняем сложные системные вычисления (рассогласование)
-        for device in self.devices.values():
-            device.process_calculated_parameters(task, self)
 
     def get_device(self, device_role: str):
         return self.devices.get(device_role)

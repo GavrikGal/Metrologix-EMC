@@ -28,6 +28,7 @@ class BaseDevice(ABC):
 
         for param_name, target_cfg in params_cfg.items():
             src_type = target_cfg.get('source_type')
+            target_cfg['parameter_system_name'] = param_name
 
             # Пропускаем параметры, требующие перекрестных связей с другими устройствами
             if src_type == 'calculated_mismatch':
@@ -51,21 +52,28 @@ class BaseDevice(ABC):
 
             if src_type != 'calculated_mismatch':
                 continue
+            elif src_type == 'calculated_mismatch':
+                lisn = hardware.get_device('lisn')
+                receiver = hardware.get_device('receiver')
+                cable_system = hardware.get_device('cable_system')
+                attenuator = hardware.get_device('attenuator')  # 🌟 Проверяем наличие аттенюатора
 
-            lisn = hardware.get_device('lisn')
-            receiver = hardware.get_device('receiver')
-            cable_system = hardware.get_device('cable_system')
+                if lisn and receiver and cable_system:
+                    # 🌟 ФИЗИКА СИСПР: если подключен аттенюатор, его выходной S22 становится
+                    # эквивалентным источником отражения для кабеля, гася переотражения от LISN
+                    if attenuator and 'S22' in attenuator.processed_parameters:
+                        target_cfg['source_vswr_trace'] = attenuator.processed_parameters['S22'].value_trace
+                    else:
+                        target_cfg['source_vswr_trace'] = lisn.processed_parameters['LISN_VSWR'].value_trace
 
-            if lisn and receiver and cable_system:
-                # Теперь эти ключи гарантированно существуют в памяти, так как Пасс 1 уже завершен!
-                target_cfg['source_vswr_trace'] = lisn.processed_parameters['LISN_VSWR'].value_trace
-                target_cfg['load_vswr_trace'] = receiver.processed_parameters['Receiver_VSWR'].value_trace
-                target_cfg['cable_s21_trace'] = cable_system.processed_parameters['S21'].value_trace
+                    # Характеристики нагрузки и кабеля остаются неизменными
+                    target_cfg['load_vswr_trace'] = receiver.processed_parameters['Receiver_VSWR'].value_trace
+                    target_cfg['cable_s21_trace'] = cable_system.processed_parameters['S21'].value_trace
 
-                if 'S11' in cable_system.processed_parameters:
-                    target_cfg['cable_s11_trace'] = cable_system.processed_parameters['S11'].value_trace
-                if 'S22' in cable_system.processed_parameters:
-                    target_cfg['cable_s22_trace'] = cable_system.processed_parameters['S22'].value_trace
+                    if 'S11' in cable_system.processed_parameters:
+                        target_cfg['cable_s11_trace'] = cable_system.processed_parameters['S11'].value_trace
+                    if 'S22' in cable_system.processed_parameters:
+                        target_cfg['cable_s22_trace'] = cable_system.processed_parameters['S22'].value_trace
 
                 provider = DataProviderFactory.get_provider(
                     source_type=src_type, root_dir=self.device_dir_path, config=target_cfg

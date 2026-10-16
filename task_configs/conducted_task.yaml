@@ -29,6 +29,14 @@ hardware_setup:
   reading_process: "operator_reading" # Папка оператора
   lisn: "nslk_8127"                   # Папка эквивалента сети
   main: "main"                        # Папка сети питания
+  attenuator: "attenuator_20db"
+
+tract_cascade:
+  source: "lisn"
+  load: "receiver"
+  cascade:
+    - "attenuator"
+    - "cable_system"
 
 # ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
 budget_components:
@@ -55,6 +63,14 @@ budget_components:
   - component_name: "Cable System Attenuation"
     device_role: "cable_system"
     target_parameter: "S21"
+
+  - component_name: "External Attenuator Loss"
+    device_role: "attenuator"
+    target_parameter: "S21"
+
+#  - component_name: "Tract Mismatch Uncertainty"
+#    device_role: "cable_system"
+#    target_parameter: "Tract_Mismatch"
 
   - component_name: "LISN Attenuation"
     device_role: "lisn"

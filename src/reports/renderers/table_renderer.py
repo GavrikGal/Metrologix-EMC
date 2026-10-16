@@ -45,11 +45,13 @@ class TableRenderer(BaseRenderer):
             sys2_slice = np.zeros((len(final_freqs), 1))
             sys1_mean, sys2_mean = final_values, final_values
 
+        _, final_u_std = parameter.get_values_for_frequencies(final_freqs)
+
         raw_slice = {
             'freq_hz': final_freqs,
             'values_db': final_values,
-            'raw_uncertainty_db': parameter.uncertainty_trace.get_values_for_frequencies(
-                final_freqs) if parameter.uncertainty_trace else np.zeros_like(final_freqs),
+            # Если неопределенности нет — подставляем массив нулей для стабильности CSV
+            'raw_uncertainty_db': final_u_std if final_u_std is not None else np.zeros_like(final_freqs),
             'sys1_traces': sys1_slice, 'sys2_traces': sys2_slice,
             'sys1_mean_db': sys1_mean, 'sys2_mean_db': sys2_mean
         }

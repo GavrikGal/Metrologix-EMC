@@ -50,15 +50,17 @@ class NoiseFloorDataProvider(BaseDataProvider):
         task_limit_trace = self.config.get('task_limit_trace')
 
         # 🌟 3. ИЗВЛЕКАЕМ НАШУ ДИНАМИЧЕСКУЮ КРИВУЮ СИСПР ИЗ КОНФИГА ПРОВАЙДЕРА!
+        # Извлекаем нашу динамическую кривую СИСПР из конфига провайдера
         cispr_graph_trace = self.config.get('cispr_graph_trace')
         if not task_limit_trace or not cispr_graph_trace:
             raise ValueError("[NoiseFloorProvider] Критические трассы СИСПР или лимитов отсутствуют в конфигурации.")
 
-        # 4. Соединяем сетку объединенного шума и сетку переломных точек лимита задачи
-        aligned_noise_trace, aligned_limit_trace = TraceManipulator.concatenate_grids(
+        # 🌟 ИСПРАВЛЕНИЕ: Передаем трассы списком внутри квадратных скобок [...]
+        aligned_noise_trace, aligned_limit_trace = TraceManipulator.concatenate_grids([
             full_noise_trace,
             task_limit_trace
-        )
+        ])
+
         calculation_grid = aligned_noise_trace.frequencies
 
         # 5. Вычисляем соотношение Сигнал/Шум

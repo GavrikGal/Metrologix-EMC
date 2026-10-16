@@ -6,21 +6,49 @@ class TraceManipulator:
     """Манипулятор трасс: выполняет внешние математические операции над метрологическими сущностями"""
 
     @staticmethod
-    def concatenate_grids(trace_a: Trace, trace_b: Trace) -> tuple[Trace, Trace]:
+    def concatenate_grids(traces: list) -> tuple:
         """
-        Принимает две любые трассы (или неопределенности), склеивает их частотные сетки
-        (30 кГц + 100 кГц), убирает дубликаты и возвращает два новых объекта,
-        интерполированных под эту общую плотную сетку частот.
+        ВЫСОКОЭФФЕКТИВНОЕ СОЕДИНЕНИЕ СЕТОК ЧАСТОТ (O(N)):
+        Собирает частотные оси всех объектов, выполняет сортировку и удаление
+        дубликатов ОДИН раз в конце, сохраняя исходную длину кортежа для распаковки.
         """
-        # Объединяем оси частот двух объектов, удаляем дубликаты и сортируем по возрастанию
-        combined_frequencies = np.concatenate((trace_a.frequencies, trace_b.frequencies))
-        union_grid = np.sort(np.unique(combined_frequencies))
+        if not traces:
+            return ()
 
-        # Перестраиваем (интерполируем) оба объекта под общую сетку частот
-        aligned_a = trace_a.align_to_grid(union_grid)
-        aligned_b = trace_b.align_to_grid(union_grid)
+        # 1. Фильтруем входящий список, оставляя только реальные объекты Trace/Uncertainty
+        clean_traces = [t for t in traces if t is not None]
 
-        return aligned_a, aligned_b
+        # 🌟 ИСПРАВЛЕНИЕ: Если вообще все переданные объекты были None,
+        # возвращаем кортеж из None ТОЙ ЖЕ ДЛИНЫ, что и входящий список!
+        if not clean_traces:
+            return tuple(None for _ in traces)
+
+        # 2. Собираем абсолютно все частоты в единый массив ("кучу")
+        raw_frequencies_pool = []
+        for current_trace in clean_traces:
+            if current_trace.frequencies_units.lower() != 'hz':
+                from src.core.math_models import FrequencyConverter
+                ratio = FrequencyConverter.get_ratio(from_unit=current_trace.frequencies_units, to_unit='Hz')
+                raw_frequencies_pool.append(current_trace.frequencies * ratio)
+            else:
+                raw_frequencies_pool.append(current_trace.frequencies)
+
+        combined_pool = np.concatenate(raw_frequencies_pool)
+
+        # 3. Очистка от дубликатов и сортировка строго ОДИН раз
+        union_grid_hz = np.sort(np.unique(combined_pool))
+
+        # 4. Перестраиваем под общую сетку только те объекты, которые реально существовали.
+        # Для объектов, которые были None, возвращаем None, ЖЕСТКО сохраняя порядок и длину!
+        result = []
+        for original_trace in traces:
+            if original_trace is not None:
+                result.append(original_trace.align_to_grid(union_grid_hz))
+            else:
+                result.append(None)
+
+        return tuple(result)
+
 
     @staticmethod
     def join_sequences(traces: list[Trace]) -> Trace:
@@ -33,24 +61,9 @@ class TraceManipulator:
         if not traces:
             raise ValueError("[TraceManipulator] Список трасс для склеивания пуст.")
         if len(traces) == 1:
-            return traces[0]
-
-        # Последовательно склеиваем массивы всех переданных кусков (декад/диапазонов)
+            return traces[0]  # Исправленный нами ранее индекс 0
         all_freqs = np.concatenate([t.frequencies for t in traces])
         all_values = np.concatenate([t.values for t in traces])
-
-        # Выполняем СТАБИЛЬНУЮ сортировку (mergesort).
-        # Она гарантирует, что если частоты равны (точка стыка),
-        # то порядок следования точек из файлов сохранится без искажений!
         sort_indices = np.argsort(all_freqs, kind='mergesort')
-
-        final_freqs = all_freqs[sort_indices]
-        final_values = all_values[sort_indices]
-
-        # Возвращаем единый непрерывный объект Trace, сохранивший все физические ступеньки
-        return Trace(
-            frequencies=final_freqs,
-            values=final_values,
-            frequencies_units=traces[0].frequencies_units,
-            values_units=traces[0].values_units
-        )
+        return Trace(frequencies=all_freqs[sort_indices], values=all_values[sort_indices],
+                     frequencies_units=traces[0].frequencies_units, values_units=traces[0].values_units)
