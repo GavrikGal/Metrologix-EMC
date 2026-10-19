@@ -23,7 +23,7 @@ class BaseDevice(ABC):
         self.processed_parameters = {}
 
     def process_device_data(self, task: Task) -> None:
-        """🌟 ПАСС 1: Загрузка первичных независимых параметров (константы, таблицы, разности)"""
+        """Загрузка первичных независимых параметров (константы, таблицы, разности)"""
         params_cfg = self.config.get('parameters', {})
 
         for param_name, target_cfg in params_cfg.items():

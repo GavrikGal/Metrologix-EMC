@@ -43,7 +43,9 @@ class TraceManipulator:
         result = []
         for original_trace in traces:
             if original_trace is not None:
-                result.append(original_trace.align_to_grid(union_grid_hz))
+                aligned_trace = original_trace.align_to_grid(union_grid_hz)
+                aligned_trace.frequencies_units = 'Hz'
+                result.append(aligned_trace)
             else:
                 result.append(None)
 

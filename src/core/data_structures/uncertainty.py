@@ -29,6 +29,7 @@ class Uncertainty(Trace):
         else:
             raise ValueError(f'Неизвестное распределение: {self.distribution_type}')
 
+
     @classmethod
     def create_constant(cls, frequencies_units: str = 'Hz', values_units: str = 'dB',
                         distribution_type: str = 'rectangular', k_factor: float | None = None,
@@ -53,11 +54,13 @@ class Uncertainty(Trace):
 
     def align_to_grid(self, target_frequencies: np.ndarray) -> 'Uncertainty':
         return Uncertainty(target_frequencies, self.get_values_for_frequencies(target_frequencies),
-                           'Hz', self.values_units, self.distribution_type, self.k_factor,
+                           self.frequencies_units, self.values_units, self.distribution_type, self.k_factor,
                            self.is_symmetric, self.asymmetric_label)
+
 
     def get_standard_uncertainty_for_frequencies(self, frequencies: np.ndarray) -> np.ndarray:
         return self.get_values_for_frequencies(frequencies) / self.divisor
+
 
     def get_max_uncertainties_in_range(self, f_min_hz: float, f_max_hz: float) -> tuple[float, float]:
         slice_freqs, slice_raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
@@ -77,9 +80,10 @@ class Uncertainty(Trace):
         aligned_self, aligned_other = TraceManipulator.concatenate_grids([self_db, other_db])
 
         # Делим на делитель формы, получая стандартную u(xi)
-        u_std_self = aligned_self.values / aligned_self.divisor
-        u_std_other = aligned_other.values / aligned_other.divisor
+        u_std_self = aligned_self.values / self.divisor
+        u_std_other = aligned_other.values / other.divisor
 
         rss_values = np.sqrt(u_std_self ** 2 + u_std_other ** 2)
 
-        return Uncertainty(aligned_self.frequencies, rss_values, 'Hz', 'dB', 'normal', k_factor=1.0)
+        return Uncertainty(aligned_self.frequencies, rss_values, aligned_self.frequencies_units,
+                           'dB', 'normal', k_factor=1.0)

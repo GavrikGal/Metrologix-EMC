@@ -2,12 +2,15 @@
 import os
 import numpy as np
 import pandas as pd
+import logging
 from .base_provider import BaseDataProvider
 from src.readers.hardware_data_reader import HardwareDataReader
 from src.core.data_structures.parameter import Parameter
 from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 from src.core.utils.trace_manipulator import TraceManipulator
+
+logger = logging.getLogger("Metrologix")
 
 
 class CalculatedTraceDifferenceProvider(BaseDataProvider):
@@ -20,7 +23,7 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         system1_param = self._load_system_raw_parameter(self.config['system1_baseline'], reader_settings, columns_mapping)
         system2_param = self._load_system_raw_parameter(self.config['system2_with_cable'], reader_settings, columns_mapping)
 
-        # 🌟 КРАСОТА АЛГЕБРЫ ЯДРА: Вычитаем один объект из другого оператором!
+        # Вычитаем один объект из другого оператором!
         # Иммутабельный оператор '-' вернет новый Parameter, сохранив исходные системы целыми
         final_parameter = system2_param - system1_param
 
@@ -89,7 +92,8 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         value_trace = Trace(raw_frequencies, mean_values)
         uncertainty_trace = Uncertainty(raw_frequencies, u_type_a_values, distribution_type='normal', k_factor=1.0)
 
-        parameter = Parameter(value_trace, uncertainty_trace)
+        parameter = Parameter(name=self.config.get('parameter_system_name', 'S21'),
+                              value_trace=value_trace, uncertainty_trace=uncertainty_trace)
 
         # Кэшируем сырую многомерную матрицу отсчетов для будущего рендерера таблиц
         parameter.sys1_traces = df_clean[only_traces_columns].values

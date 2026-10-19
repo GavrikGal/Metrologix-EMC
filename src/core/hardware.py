@@ -4,6 +4,7 @@ import os
 
 from src.core.task import Task
 from src.core.utils import logger
+from src.hardware.main.main import Main
 from src.hardware.rf_cable.rf_cable import RFCableSystem
 from src.hardware.receiver.receiver import EMCReceiver
 from src.hardware.lisn.lisn import LISN
@@ -31,6 +32,8 @@ class Hardware:
                 device = RFCableSystem(device_dir)
             elif 'lisn' in device_role:
                 device = LISN(device_dir)
+            elif 'main' in device_role:
+                device = Main(device_dir)
             else:
                 device = MeasurementProcess(device_dir)
 

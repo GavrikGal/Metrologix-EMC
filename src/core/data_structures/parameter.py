@@ -13,6 +13,7 @@ class Parameter:
         self.value_trace = value_trace
         self.uncertainty_trace = uncertainty_trace
 
+
     def get_values_for_frequencies(self, target_frequencies: np.ndarray) -> tuple[np.ndarray, Optional[np.ndarray]]:
         """Унифицированная ленивая интерполяция. Возвращает None вместо u_std, если погрешности нет"""
         values = self.value_trace.get_values_for_frequencies(target_frequencies)
@@ -20,6 +21,7 @@ class Parameter:
             u_std = self.uncertainty_trace.get_standard_uncertainty_for_frequencies(target_frequencies)
             return values, u_std
         return values, None
+
 
     def __add__(self, other: 'Parameter') -> 'Parameter':
         """Сложение параметров через оператор '+'"""
