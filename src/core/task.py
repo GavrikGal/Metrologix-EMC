@@ -1,9 +1,13 @@
 # src/core/task.py
 import os
 import yaml
+import logging
+
+from src.core.data_structures.parameter import Parameter
 from src.core.math_models import FrequencyConverter
 from src.core.data_structures.trace import Trace
 from src.readers.hardware_data_reader import HardwareDataReader
+logger = logging.getLogger("Metrologix")
 
 
 class Task:
@@ -33,7 +37,7 @@ class Task:
         # 3. Загрузка кривой сигнал/шум
         self.noise_deviation_trace = self._load_noise_deviation_curve()
 
-    def _load_limits(self):
+    def _load_limits(self) -> Parameter:
         limit_settings = self.config.get('limits', {})
         if not limit_settings:
             return None
@@ -48,33 +52,32 @@ class Task:
             'value': limit_settings.get('limit_value'),
             'f_min': self.frequency_min_hz,
             'f_max': self.frequency_max_hz,
-            'reader_settings': {
-                'file_format': limit_settings.get('file_format', 'excel'),
-                'skip_rows': limit_settings.get('skip_rows', 1)
-            },
+            'reader_settings': limit_settings.get('reader_settings', {}),
             'columns_mapping': {'frequency': 0, 'value': 1, 'uncertainty': 2}
         })
-        return provider.get_parameter().value_trace
+        limits = provider.get_parameter()
+        limits.name = 'Limits'
+        return limits
 
-    def _load_noise_deviation_curve(self) -> Trace:
+    def _load_noise_deviation_curve(self) -> Parameter:
         """🌟 Служебный метод: читает график СИСПР через HardwareDataReader и возвращает Trace"""
         detector_type = self.config.get('target_detector', 'quasipeak').strip().lower()
         deviation_dir = self.settings.get('noise_deviation_path', 'task_configs/signal and noise deviation')
 
         file_name = f"{detector_type}.csv"
-        full_path = os.path.join(self.root_dir, deviation_dir, file_name)
+        # full_path = os.path.join(self.root_dir, deviation_dir, file_name)
 
-        # Вызываем наш готовый ридер (пропускаем 1 строку шапки "Signal_to_Noise_dB,Value")
-        df_curve = HardwareDataReader.read_measurement_data(
-            file_path=full_path,
-            file_format='text',
-            skip_rows=1,
-            delimiter=','
-        )
+        from src.readers.data_providers.provider_factory import DataProviderFactory
+        provider = DataProviderFactory.get_provider('table', deviation_dir, {
+            'file_path': file_name,
+            'reader_settings': {
+                'file_format': 'text',
+                'skip_rows': 1,
+                'delimiter': ',',
+                'file_frequency_unit': 'Hz'
+            }
+        })
 
-        # 0-я колонка: Соотношение S/N [дБ], 1-я колонка: Значение погрешности [дБ]
-        sn_ratios = df_curve[0].values.astype(float)
-        error_values = df_curve[1].values.astype(float)
-
-        # Возвращаем метрологический объект Trace
-        return Trace(frequencies=sn_ratios, values=error_values)
+        noise_deviation_curve = provider.get_parameter()
+        noise_deviation_curve.name = 'Noise_Deviation_Curve'
+        return noise_deviation_curve

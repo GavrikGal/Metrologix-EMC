@@ -10,6 +10,7 @@ from src.core.data_structures.uncertainty import Uncertainty
 from src.core.utils.trace_manipulator import TraceManipulator
 from src.core.math_models import FrequencyConverter
 
+
 logger = logging.getLogger("Metrologix")
 
 
@@ -46,42 +47,36 @@ class NoiseFloorDataProvider(BaseDataProvider):
 
         full_noise_trace = TraceManipulator.join_sequences(loaded_segments)
 
+        noise = Parameter('Noise', full_noise_trace)
+
         # 2. Извлекаем трассу лимитов задачи
         task_limit_trace = self.config.get('task_limit_trace')
 
-        # 🌟 3. ИЗВЛЕКАЕМ НАШУ ДИНАМИЧЕСКУЮ КРИВУЮ СИСПР ИЗ КОНФИГА ПРОВАЙДЕРА!
-        # Извлекаем нашу динамическую кривую СИСПР из конфига провайдера
+        # 3. Извлекаем динамическую кривую СИСПР из конфига провайдера
         cispr_graph_trace = self.config.get('cispr_graph_trace')
         if not task_limit_trace or not cispr_graph_trace:
             raise ValueError("[NoiseFloorProvider] Критические трассы СИСПР или лимитов отсутствуют в конфигурации.")
 
-        # 🌟 ИСПРАВЛЕНИЕ: Передаем трассы списком внутри квадратных скобок [...]
-        aligned_noise_trace, aligned_limit_trace = TraceManipulator.concatenate_grids([
-            full_noise_trace,
-            task_limit_trace
-        ])
-
-        calculation_grid = aligned_noise_trace.frequencies
-
         # 5. Вычисляем соотношение Сигнал/Шум
-        signal_to_noise_ratio = aligned_limit_trace.values - aligned_noise_trace.values
-        signal_to_noise_ratio = np.clip(signal_to_noise_ratio, 0.0, 40.0)
+        signal_to_noise_ratio = task_limit_trace - noise
 
         # 🌟 6. ИНТЕРПОЛЯЦИЯ НА ЛЕТУ СИЛАМИ САМОГО ОБЪЕКТА TRACE ГРАФИКА
         # Мы просто просим объект cispr_graph_trace выдать значения погрешностей
         # для вычисленных соотношений signal_to_noise_ratio
-        calculated_error_values = cispr_graph_trace.get_values_for_frequencies(signal_to_noise_ratio)
+        calculated_error_values = cispr_graph_trace.value_trace.get_values_for_frequencies(
+            signal_to_noise_ratio.value_trace.values
+        )
 
         # 7. Финальный синтез метрологических объектов
-        final_value_trace = Trace(calculation_grid, np.zeros_like(calculation_grid))
+        final_value_trace = Trace.create_zeros_like(signal_to_noise_ratio.value_trace)
         final_uncertainty_trace = Uncertainty(
-            frequencies=calculation_grid,
+            frequencies=signal_to_noise_ratio.value_trace.frequencies,
             values=calculated_error_values,
             distribution_type='rectangular',
             is_symmetric=False
         )
 
-        logger.info(f"Успешно синтезирован параметр шумов. Точек склейки: {len(calculation_grid)}, "
+        logger.info(f"Успешно синтезирован параметр шумов. Точек склейки: {len(calculated_error_values)}, "
                     f"Худшая погрешность детектора: {calculated_error_values.max():.2f} дБ")
 
-        return Parameter(final_value_trace, final_uncertainty_trace)
+        return Parameter('Noise_Floor', final_value_trace, final_uncertainty_trace)

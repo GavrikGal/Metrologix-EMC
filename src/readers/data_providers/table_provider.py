@@ -1,11 +1,15 @@
 # src/readers/data_providers/table_provider.py
 import os
 import numpy as np
+import logging
 from .base_provider import BaseDataProvider
 from src.readers.hardware_data_reader import HardwareDataReader
 from src.core.data_structures.parameter import Parameter
 from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
+
+logger = logging.getLogger("Metrologix")
+
 
 class TableDataProvider(BaseDataProvider):
     """Провайдер для чтения оцифрованных калибровочных таблиц из Excel/Text"""

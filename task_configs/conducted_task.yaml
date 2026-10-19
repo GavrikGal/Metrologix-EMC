@@ -17,10 +17,14 @@ target_detector: "quasipeak"
 
 limits:
   limit_type: "table"                # or constant
-  limit_value: -1
-  file_format: "excel"
-  skip_rows: 1
+#  limit_value: -1
+#  file_format: "excel"
+#  skip_rows: 1
   limit_path: "CISPR 32 cond class B.xlsx"
+  reader_settings:
+    file_format: "excel"              # Говорим ридеру открыть Excel
+    skip_rows: 1                      # Пропускаем шапку с названиями колонок
+    file_frequency_unit: "MHz"        # Важно! В файле частота указана в МГц!
 
 
 hardware_setup:
