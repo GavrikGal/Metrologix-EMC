@@ -12,26 +12,28 @@ parameters:
   # Коэффициент передачи (затухание константой 20 дБ)
   S21:
     source_type: "constant"
-    value: 20.0
+    value: -20.0
     f_min: 0.0
     f_max: 18000000000.0
     uncertainty:
       type: "constant"
-      value: 0.15                    # Погрешность из паспорта аттенюатора
+      value: 0.1                     # Погрешность из паспорта аттенюатора
       distribution: "normal"         # Поверка всегда идет по нормальному закону
       k_factor: 2
 
   # Входной КСВН аттенюатора
   S11:
     source_type: "constant"
-    value: 1.2
+    value: 1.03                      # Реальный КСВН породистого аттенюатора
+    values_units: "SWR"
     f_min: 0.0
     f_max: 18000000000.0
 
   # Выходной КСВН аттенюатора
   S22:
     source_type: "constant"
-    value: 1.2
+    value: 1.03                      # Реальный КСВН породистого аттенюатора
+    values_units: "SWR"
     f_min: 0.0
     f_max: 18000000000.0
 
