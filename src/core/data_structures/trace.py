@@ -100,6 +100,33 @@ class Trace:
         return Trace(self.frequencies, gamma_values, self.frequencies_units, 'linear')
 
 
+    def to_gamma(self) -> 'Trace':
+        """
+        🌟 ИНТЕЛЛЕКТУАЛЬНЫЙ КОНВЕРТЕР ОТРАЖЕНИЯ:
+        Автоматически определяет, что ввел пользователь (SWR, S11/S22 в дБ, или разы),
+        и универсально возвращает модуль коэффициента отражения |Gamma| (от 0 до 1).
+        """
+        unit_lower = self.values_units.lower()
+
+        # Сценарий 1: Пользователь ввел КСВН (SWR / VSWR >= 1.0)
+        if 'swr' in unit_lower:
+            vswr_clipped = np.clip(self.values, 1.0, None)
+            gamma_values = (vswr_clipped - 1.0) / (vswr_clipped + 1.0)
+            return Trace(self.frequencies, gamma_values, self.frequencies_units, 'linear')
+
+        # Сценарий 2: Пользователь ввел S-параметры отражения в децибелах (S11 или S22 < 0 дБ)
+        if 'db' in unit_lower:
+            # Переводим логарифмические дБ возвращаемых потерь в линейные разы напряжения
+            # Для S11=-20 дБ получим 10^(-20/20) = 0.1 (модуль Gamma)
+            gamma_values = 10 ** (self.values / 20.0)
+            # Дополнительная защита от некорректных положительных дБ в паспортах отражения
+            gamma_values = np.clip(gamma_values, 0.0, 1.0)
+            return Trace(self.frequencies, gamma_values, self.frequencies_units, 'linear')
+
+        # Сценарий 3: Данные уже введены в линейных казах (от 0 до 1)
+        return Trace(self.frequencies, np.clip(self.values, 0.0, 1.0), self.frequencies_units, 'linear')
+
+
     # =========================================================================
     # МАТЕМАТИЧЕСКИЕ ОПЕРАТОРЫ С ЗАЩИТОЙ ЕДИНОГО КОНТЕКСТА СЕТОК
     # =========================================================================

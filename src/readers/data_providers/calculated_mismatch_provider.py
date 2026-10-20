@@ -39,10 +39,10 @@ class CalculatedMismatchProvider(BaseDataProvider):
         ])
 
         # 4. РАДИОТЕХНИЧЕСКАЯ КОНВЕРТАЦИЯ ШКАЛ НА ЕДИНОЙ СЕТКЕ FREQUENCIES
-        gamma_g = aligned_source.swr_to_gamma()  # Модуль отражения источника
-        gamma_l = aligned_load.swr_to_gamma()  # Модуль отражения нагрузки
-        s11_lin = aligned_s11.swr_to_gamma()  # Модуль отражения входа кабеля
-        s22_lin = aligned_s22.swr_to_gamma()  # Модуль отражения выхода кабеля
+        gamma_g = aligned_source.to_gamma()  # Модуль отражения источника
+        gamma_l = aligned_load.to_gamma()  # Модуль отражения нагрузки
+        s11_lin = aligned_s11.to_gamma()  # Модуль отражения входа кабеля
+        s22_lin = aligned_s22.to_gamma()  # Модуль отражения выхода кабеля
         s21_lin = aligned_s21.to_linear()  # Коэффициент передачи кабеля в разах
 
         # 5. ВЫЧИСЛЕНИЕ ФОРМУЛЫ СИСПР НА БЕЗОПАСНЫХ ОДНОМЕРНЫХ МАССИВАХ

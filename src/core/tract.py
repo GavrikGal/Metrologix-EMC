@@ -50,33 +50,41 @@ class Tract:
 
         nodes = []
         for dev in chain_devices:
-            if 'Receiver_VSWR' in dev.processed_parameters:
-                vswr_in = dev.processed_parameters['Receiver_VSWR'].value_trace.get_values_for_frequencies(
-                    final_grid_hz)
-            elif 'S11' in dev.processed_parameters:
-                vswr_in = dev.processed_parameters['S11'].value_trace.get_values_for_frequencies(final_grid_hz)
+            # 3.1 Входной порт (Ищем S11 или Receiver_VSWR, подстраиваясь под любой тип девайса)
+            if 'S11' in dev.processed_parameters:
+                trace_in = dev.processed_parameters['S11'].value_trace.align_to_grid(final_grid_hz)
+            elif 'Receiver_VSWR' in dev.processed_parameters:
+                trace_in = dev.processed_parameters['Receiver_VSWR'].value_trace.align_to_grid(final_grid_hz)
             else:
-                vswr_in = np.full_like(final_grid_hz, 1.2)
+                # Если порт в документации опущен, метрологически принимаем стандартный безопасный дефолт СИСПР (КСВН 1.2)
+                trace_in = Trace.create_constant(final_grid_hz.min(), final_grid_hz.max(), 1.2, values_units='SWR')
 
-            if 'LISN_VSWR' in dev.processed_parameters:
-                vswr_out = dev.processed_parameters['LISN_VSWR'].value_trace.get_values_for_frequencies(final_grid_hz)
-            elif 'S22' in dev.processed_parameters:
-                vswr_out = dev.processed_parameters['S22'].value_trace.get_values_for_frequencies(final_grid_hz)
+            # 3.2 Выходной порт (Ищем S22 или LISN_VSWR)
+            if 'S22' in dev.processed_parameters:
+                trace_out = dev.processed_parameters['S22'].value_trace.align_to_grid(final_grid_hz)
+            elif 'LISN_VSWR' in dev.processed_parameters:
+                trace_out = dev.processed_parameters['LISN_VSWR'].value_trace.align_to_grid(final_grid_hz)
             else:
-                vswr_out = np.full_like(final_grid_hz, 1.2)
+                trace_out = Trace.create_constant(final_grid_hz.min(), final_grid_hz.max(), 1.2, values_units='SWR')
 
-            s21_db = dev.processed_parameters['S21'].value_trace.get_values_for_frequencies(
-                final_grid_hz) if 'S21' in dev.processed_parameters else np.zeros_like(final_grid_hz)
+            # 3.3 Коэффициент сквозной передачи S21
+            if 'S21' in dev.processed_parameters:
+                s21_trace = dev.processed_parameters['S21'].value_trace.align_to_grid(final_grid_hz)
+            else:
+                s21_trace = Trace.create_constant(final_grid_hz.min(), final_grid_hz.max(), 0.0, values_units='dB')
 
-            gamma_in = (vswr_in - 1.0) / (vswr_in + 1.0)
-            gamma_out = (vswr_out - 1.0) / (vswr_out + 1.0)
+            # 🌟 АБСОЛЮТНАЯ ИНТУИТИВНОСТЬ: Трасса сама понимает шкалу (дБ или SWR) и выдает |Gamma| от 0 до 1!
+            gamma_in_array = trace_in.to_gamma().values
+            gamma_out_array = trace_out.to_gamma().values
 
-            # Перевод знака для логарифмического затухания
-            s21_db_signed = -np.abs(
-                s21_db) if 'cable' in dev.name.lower() or 'attenuator' in dev.name.lower() else s21_db
-            s21_lin = 10 ** (s21_db_signed / 20.0)
+            # Приведение коэффициента передачи S21 к линейным разам с автоматической защитой знака дБ
+            s21_db = s21_trace.values
+            if 'cable' in dev.name.lower() or 'attenuator' in dev.name.lower():
+                s21_db = -np.abs(s21_db)
+            s21_lin_array = 10 ** (s21_db / 20.0)
 
-            nodes.append({'in': gamma_in, 'out': gamma_out, 's21': s21_lin})
+            # Сохраняем в узлы чистые линеаризованные массивы NumPy одинаковой длины
+            nodes.append({'in': gamma_in_array, 'out': gamma_out_array, 's21': s21_lin_array})
 
         # Сквозное каскадирование S-матриц
         gamma_source = nodes[0]['out']

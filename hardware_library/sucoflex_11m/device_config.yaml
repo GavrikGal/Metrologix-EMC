@@ -58,13 +58,15 @@ parameters:
 
   S11:
     source_type: "constant"
-    value: 1.2
+    value: -22
+    values_units: "dB"
     f_min: 9000.0
     f_max: 40000000000.0
 
   S22:
     source_type: "constant"
-    value: 1.2
+    value: -22
+    values_units: "dB"
     f_min: 9000.0
     f_max: 40000000000.0
 
