@@ -74,7 +74,8 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
 
         # Объединяем файлы, сортируем по частоте (0-я колонка) и чистим дубликаты на стыках декад
         df_merged = pd.concat(data_frames, ignore_index=True).sort_values(0)
-        df_clean = df_merged.drop_duplicates(subset=[0], keep='last')
+        # df_clean = df_merged.drop_duplicates(subset=[0], keep='last')
+        df_clean = df_merged
 
         # Извлекаем финальный массив частот (переводим ось в Герцы)
         raw_frequencies = df_clean[0].values.astype(float)
