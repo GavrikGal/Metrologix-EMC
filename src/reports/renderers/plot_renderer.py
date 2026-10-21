@@ -71,7 +71,9 @@ class PlotRenderer(BaseRenderer):
 
     def _draw_uncertainty_corridor(self, x: np.ndarray, y: np.ndarray, u_std: np.ndarray, style) -> None:
         """Отрисовка полупрозрачного коридора расширенной неопределенности k=2"""
-        u_expanded = u_std * 2
+        # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
+        # u_expanded = u_std * 2
+        u_expanded = u_std
         line_w = style('line_width') / 2 if style('line_width') else 0.5
         plt.fill_between(x, y - u_expanded, y + u_expanded,
                          color=style('uncertainty_color'), alpha=style('uncertainty_alpha'),
@@ -97,7 +99,9 @@ class PlotRenderer(BaseRenderer):
     def _draw_maximum_uncertainty_annotation(self, x: np.ndarray, y: np.ndarray, u_std: np.ndarray, f_min: float,
                                              f_max: float) -> None:
         """Поиск наихудшей метрологической точки и вывод стрелки-выноски с её параметрами"""
-        u_expanded = u_std * 2
+        # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
+        # u_expanded = u_std * 2
+        u_expanded = u_std
         mask = (x >= f_min) & (x <= f_max)
 
         if np.any(mask):
@@ -108,7 +112,7 @@ class PlotRenderer(BaseRenderer):
             plt.scatter(f_zone[m_idx], v_zone[m_idx], color='black', s=6, zorder=5)
 
             # Текст и геометрия стрелки выноски
-            text = f"F={f_zone[m_idx]:.1f}\nMax={u_zone[m_idx]:.2f}"
+            text = f"F={f_zone[m_idx]:.3f}\nMax={u_zone[m_idx]:.3f}"
             y_min, _ = plt.ylim()
             y_text_pos = y_min - (y_min - v_zone[m_idx]) / 2
             x_text_pos = f_zone[m_idx] - (x.max() - x.min()) * 0.15

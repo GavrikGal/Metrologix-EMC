@@ -187,7 +187,7 @@ protocol_output:
           x_scale: "linear"              # "log" / "linear"
           show_limit_line: true
           limit_value_db: -1.0
-          table_points_count: 30       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+          table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
           # 💡 КАСТОМИЗАЦИЯ СТИЛЯ ГРАФИКА
 #          style_settings:
