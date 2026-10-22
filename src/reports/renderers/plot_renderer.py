@@ -72,12 +72,12 @@ class PlotRenderer(BaseRenderer):
     def _draw_uncertainty_corridor(self, x: np.ndarray, y: np.ndarray, u_std: np.ndarray, style) -> None:
         """Отрисовка полупрозрачного коридора расширенной неопределенности k=2"""
         # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
-        # u_expanded = u_std * 2
-        u_expanded = u_std
+        u_expanded = u_std * 2
+        # u_expanded = u_std
         line_w = style('line_width') / 2 if style('line_width') else 0.5
         plt.fill_between(x, y - u_expanded, y + u_expanded,
                          color=style('uncertainty_color'), alpha=style('uncertainty_alpha'),
-                         lw=line_w, label='Неопределённость', zorder=2)
+                         lw=line_w, label='Расширенная неопределенность (k=2)', zorder=2)
 
     def _draw_limit_line(self, sub_cfg: dict, style) -> None:
         """Отрисовка горизонтальной линии допуска/лимита CISPR"""
@@ -100,8 +100,8 @@ class PlotRenderer(BaseRenderer):
                                              f_max: float) -> None:
         """Поиск наихудшей метрологической точки и вывод стрелки-выноски с её параметрами"""
         # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
-        # u_expanded = u_std * 2
-        u_expanded = u_std
+        u_expanded = u_std * 2
+        # u_expanded = u_std
         mask = (x >= f_min) & (x <= f_max)
 
         if np.any(mask):

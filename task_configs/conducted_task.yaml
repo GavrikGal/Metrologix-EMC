@@ -185,8 +185,8 @@ protocol_output:
           freq_min: 0.15         # 150 кГц
           freq_max: 30.0         # 30 МГц
           x_scale: "linear"              # "log" / "linear"
-          show_limit_line: true
-          limit_value_db: -1.0
+          show_limit_line: true         # true/false
+          limit_value_db: -1.0          # todo: лимиты должны браться из задачи
           table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
           # 💡 КАСТОМИЗАЦИЯ СТИЛЯ ГРАФИКА
@@ -205,10 +205,25 @@ protocol_output:
           unit: "GHz"
           freq_min: 0.03         # 30 МГц
           freq_max: 1.0          # 1 ГГц
-#          freq_max: 40.0         # 40 ГГц
           x_scale: "linear"
           show_limit_line: false
-          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+          table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+        - title: "S21 - SUCOFLEX 1.5м + 10м"
+          unit: "GHz"
+          freq_min: 1.0         # 1 ГГц
+          freq_max: 18.0          # 18 ГГц
+          x_scale: "linear"
+          show_limit_line: false
+          table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+        - title: "S21 - SUCOFLEX 1.5м + 10м"
+          unit: "GHz"
+          freq_min: 18.0         # 18 ГГц
+          freq_max: 40.0          # 40 ГГц
+          x_scale: "linear"
+          show_limit_line: false
+          table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
     - device_id: "cable_system"
       target_parameter: "Tract_Mismatch"
