@@ -37,6 +37,7 @@ class ProtocolTableExporter:
 
         # 2. Добавляем промежуточный расчет: Среднее значение Опоры
         protocol_dict['Baseline_Mean [dBuV]'] = np.round(raw_slice_data['sys1_mean_db'].flatten(), 3)
+        protocol_dict['Baseline_Uncertainty [dB]'] = np.round(raw_slice_data['sys1_std_db'].flatten(), 3)
 
         # 3. Добавляем сырые трассы Измеряемого тракта (Target / Система 2)
         sys2_matrix = raw_slice_data['sys2_traces']
@@ -46,6 +47,7 @@ class ProtocolTableExporter:
 
         # 4. Добавляем промежуточный расчет: Среднее значение Тракта
         protocol_dict['Target_Mean [dBuV]'] = np.round(raw_slice_data['sys2_mean_db'].flatten(), 3)
+        protocol_dict['Target_Uncertainty [dB]'] = np.round(raw_slice_data['sys2_std_db'].flatten(), 3)
 
         # 💡 ИСПРАВЛЕНИЕ: Имя столбца теперь формируется ДИНАМИЧЕСКИ на основе param_name!
         protocol_dict[f'Calculated {param_name} [dB]'] = np.round(raw_slice_data['values_db'], 3)

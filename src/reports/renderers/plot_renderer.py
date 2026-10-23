@@ -113,14 +113,20 @@ class PlotRenderer(BaseRenderer):
 
             # Текст и геометрия стрелки выноски
             text = f"F={f_zone[m_idx]:.3f}\nMax={u_zone[m_idx]:.3f}"
-            y_min, _ = plt.ylim()
+            y_min, y_max = plt.ylim()
             y_text_pos = y_min - (y_min - v_zone[m_idx]) / 2
             x_text_pos = f_zone[m_idx] - (x.max() - x.min()) * 0.15
+            connectionstyle = "angle,angleA=0,angleB=90,rad=5"
+
+            if x_text_pos < x.min():
+                x_text_pos = f_zone[m_idx] + (x.max() - x.min()) * 0.15
+                y_text_pos = y_max + (y_min - v_zone[m_idx]) / 5
+                connectionstyle = "angle,angleA=90,angleB=0,rad=5"
 
             plt.annotate(
                 text, xy=(f_zone[m_idx], v_zone[m_idx]), xytext=(x_text_pos, y_text_pos),
                 arrowprops=dict(arrowstyle="->", color="black", lw=0.7,
-                                connectionstyle="angle,angleA=0,angleB=90,rad=5"),
+                                connectionstyle=connectionstyle),
                 bbox=dict(boxstyle="round,pad=0.2,rounding_size=0.15", fc="white", edgecolor="lightgrey", lw=0.7),
                 fontsize=9, zorder=6
             )

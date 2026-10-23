@@ -31,8 +31,10 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         final_parameter.name = self.config.get('parameter_system_name', 'S21')
 
         # Переносим сырые многомерные матрицы для отчетов протокола
-        final_parameter.sys1_traces = system1_param.sys1_traces
-        final_parameter.sys2_traces = system2_param.sys2_traces
+        final_parameter.sys1_traces = system1_param.sys_raw_traces
+        final_parameter.sys1_unc = system1_param.uncertainty_trace.values
+        final_parameter.sys2_traces = system2_param.sys_raw_traces
+        final_parameter.sys2_unc = system2_param.uncertainty_trace.values
 
         return final_parameter
 
@@ -97,7 +99,6 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
                               value_trace=value_trace, uncertainty_trace=uncertainty_trace)
 
         # Кэшируем сырую многомерную матрицу отсчетов для будущего рендерера таблиц
-        parameter.sys1_traces = df_clean[only_traces_columns].values
-        parameter.sys2_traces = df_clean[only_traces_columns].values
+        parameter.sys_raw_traces = df_clean[only_traces_columns].values
 
         return parameter

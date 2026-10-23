@@ -1,10 +1,15 @@
 # src/reports/renderers/table_renderer.py
 import os
 import numpy as np
+import logging
 
+from src.core.data_structures.uncertainty import Uncertainty
+from src.core.utils import logger
 from src.reports.base_renderer import BaseRenderer
 from src.reports.protocol_table_exporter import ProtocolTableExporter
 from src.reports.utils.name_builder import NameBuilder
+
+logger = logging.getLogger("Metrologix")
 
 
 class TableRenderer(BaseRenderer):
@@ -28,24 +33,42 @@ class TableRenderer(BaseRenderer):
                     chosen_indices.append(closest_idx)
             chosen_indices = np.array(chosen_indices)
 
+        logger.debug(f'{chosen_indices=}')
+
+        max_value_freq, max_value = parameter.uncertainty_trace.get_max_uncertainties_in_range(f_min_hz, f_max_hz)
+        logger.debug(f'{max_value_freq=}')
+        logger.debug(f'{np.where(raw_freqs==max_value_freq)=}')
+        logger.debug(f'{max_value=}')
+
+        chosen_indices = np.append(chosen_indices, np.argmin(np.abs(raw_freqs - max_value_freq)))
+        logger.debug(f'{chosen_indices=}')
+
         final_freqs = raw_freqs[chosen_indices]
+        logger.debug(f'{final_freqs=}')
+
+
         final_values = raw_values[chosen_indices]
 
         # Сборка структур многомерных замещений
         sys1 = parameter.__dict__.get('sys1_traces')
         sys2 = parameter.__dict__.get('sys2_traces')
+        unc1 = parameter.__dict__.get('sys1_unc')
+        unc2 = parameter.__dict__.get('sys2_unc')
+
+        _, final_u_std = parameter.get_values_for_frequencies(final_freqs)
 
         if sys1 is not None and sys2 is not None:
             sys1_slice = sys1[chosen_indices, :]
             sys2_slice = sys2[chosen_indices, :]
             sys1_mean = np.mean(sys1_slice, axis=1)
+            sys1_std = unc1[chosen_indices]
             sys2_mean = np.mean(sys2_slice, axis=1)
+            sys2_std = unc2[chosen_indices]
         else:
             sys1_slice = np.zeros((len(final_freqs), 1))
             sys2_slice = np.zeros((len(final_freqs), 1))
             sys1_mean, sys2_mean = final_values, final_values
-
-        _, final_u_std = parameter.get_values_for_frequencies(final_freqs)
+            sys1_std, sys2_std = final_u_std, final_u_std
 
         raw_slice = {
             'freq_hz': final_freqs,
@@ -53,7 +76,8 @@ class TableRenderer(BaseRenderer):
             # Если неопределенности нет — подставляем массив нулей для стабильности CSV
             'raw_uncertainty_db': final_u_std if final_u_std is not None else np.zeros_like(final_freqs),
             'sys1_traces': sys1_slice, 'sys2_traces': sys2_slice,
-            'sys1_mean_db': sys1_mean, 'sys2_mean_db': sys2_mean
+            'sys1_mean_db': sys1_mean, 'sys2_mean_db': sys2_mean,
+            'sys1_std_db': sys1_std, 'sys2_std_db': sys2_std
         }
 
         filename = NameBuilder.build_standard_filename(device_config, f_min_hz, f_max_hz)

@@ -185,7 +185,7 @@ protocol_output:
           freq_min: 0.15         # 150 кГц
           freq_max: 30.0         # 30 МГц
           x_scale: "linear"              # "log" / "linear"
-          show_limit_line: true         # true/false
+          show_limit_line: false         # true/false
           limit_value_db: -1.0          # todo: лимиты должны браться из задачи
           table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
@@ -224,6 +224,14 @@ protocol_output:
           x_scale: "linear"
           show_limit_line: false
           table_points_count: 100       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+        - title: "S21 - SUCOFLEX 1.5м + 10м"
+          unit: "GHz"
+          freq_min: 0.150         # 0.15 MГц
+          freq_max: 40.0          # 40 ГГц
+          x_scale: "linear"
+          show_limit_line: false
+          table_points_count: 100
 
     - device_id: "cable_system"
       target_parameter: "Tract_Mismatch"
