@@ -1,5 +1,12 @@
 # src/core/data_structures/trace.py
+import logging
+
 import numpy as np
+
+from src.core.math_models import FrequencyConverter
+
+
+logger = logging.getLogger("Metrologix")
 
 
 class Trace:
@@ -56,6 +63,55 @@ class Trace:
         # Если калибровочные точки лежат за пределами (или их всего 2 на краях диапазона железа)
         target_freqs = np.array([f_min_hz, f_max_hz])
         return target_freqs, self.get_values_for_frequencies(target_freqs)
+
+
+    def get_raw_values_in_frequency_range(self, f_min: float, f_max: float,
+                                          points_count: int = 2, freq_unit: str = 'Hz') -> 'Trace':
+        """
+        Возвращает трассу с максимальными исходными данными, с количеством точек равным запрашиваемому
+        :param f_min: начало диапазона
+        :param f_max: конец диапазона
+        :param freq_unit: единицы измерения f_min и f_max
+        :param points_count: количество запрашиваемых значений (точек)
+        :return: Trace с максимальными исходными данными, с количеством точек равным запрашиваемому
+        """
+        # todo: debug: points_count
+        points_count = 10
+
+        # Подготовка масштабированного диапазона частот
+        ratio = FrequencyConverter.get_ratio(from_unit=freq_unit, to_unit="Hz")
+        f_min_hz = f_min * ratio
+        f_max_hz = f_max * ratio
+
+        # Получение всех исходных данных в заданном диапазоне частот
+        raw_freqs, raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
+
+        logger.debug(f'{raw_freqs=}')
+        logger.debug(f'{raw_values=}')
+
+        f_min_raw_hz = raw_freqs[0]     # todo: Может float()
+        f_max_raw_hz = raw_freqs[-1]
+
+        raw_slice = raw_freqs[1:-1:]
+
+        # Разбитие запрашиваемого диапазона на поддиапазоны
+        ideal_grid = np.linspace(f_min_hz, f_max_hz, num=points_count-1)
+        chosen_indices = []
+        for ideal_f in ideal_grid:
+            closest_idx = np.argmin(np.abs(raw_freqs - ideal_f))
+            if closest_idx not in chosen_indices:
+                chosen_indices.append(closest_idx)
+        chosen_indices = np.array(chosen_indices)
+
+        logger.debug(f'{chosen_indices=}')
+
+
+
+
+
+
+
+
 
 
     def get_max_value_in_range(self, f_min_hz: float, f_max_hz: float) -> float:

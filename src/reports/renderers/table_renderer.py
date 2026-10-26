@@ -21,6 +21,8 @@ class TableRenderer(BaseRenderer):
         # 🌟 ИСПРАВЛЕНИЕ: Запрашиваем метрологически чистый срез реальных точек у самой Трассы
         raw_freqs, raw_values = parameter.value_trace.get_raw_slice(f_min_hz, f_max_hz)
 
+        parameter.value_trace.get_raw_values_in_frequency_range(f_min_hz, f_max_hz, target_pts_count)
+
         # Алгоритм прореживания выборки до целевого количества (table_points_count)
         if len(raw_freqs) <= target_pts_count:
             chosen_indices = np.arange(len(raw_freqs))
