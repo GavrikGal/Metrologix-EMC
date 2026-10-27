@@ -65,8 +65,8 @@ class Trace:
         return target_freqs, self.get_values_for_frequencies(target_freqs)
 
 
-    def get_raw_values_in_frequency_range(self, f_min: float, f_max: float,
-                                          points_count: int = 2, freq_unit: str = 'Hz') -> 'Trace':
+    def get_raw_max_values_in_frequency_range(self, f_min: float, f_max: float,
+                                              points_count: int = 2, freq_unit: str = 'Hz') -> 'Trace':
         """
         Возвращает трассу с максимальными исходными данными, с количеством точек равным запрашиваемому
         :param f_min: начало диапазона
@@ -75,8 +75,6 @@ class Trace:
         :param points_count: количество запрашиваемых значений (точек)
         :return: Trace с максимальными исходными данными, с количеством точек равным запрашиваемому
         """
-        # todo: debug: points_count
-        points_count = 10
 
         # Подготовка масштабированного диапазона частот
         ratio = FrequencyConverter.get_ratio(from_unit=freq_unit, to_unit="Hz")
@@ -89,10 +87,8 @@ class Trace:
         logger.debug(f'{raw_freqs=}')
         logger.debug(f'{raw_values=}')
 
-        f_min_raw_hz = raw_freqs[0]     # todo: Может float()
-        f_max_raw_hz = raw_freqs[-1]
-
-        raw_slice = raw_freqs[1:-1:]
+        f_min_raw_hz = float(raw_freqs[0])
+        f_max_raw_hz = float(raw_freqs[-1])
 
         # Разбитие запрашиваемого диапазона на поддиапазоны
         ideal_grid = np.linspace(f_min_hz, f_max_hz, num=points_count-1)
@@ -103,15 +99,30 @@ class Trace:
                 chosen_indices.append(closest_idx)
         chosen_indices = np.array(chosen_indices)
 
-        logger.debug(f'{chosen_indices=}')
+        # Поиск частот с максимальным значением на поддиапазонах
+        freq_slice = [f_min_raw_hz]
+        if len(chosen_indices) > 1:
+            if len(chosen_indices) > 2:
+                for index_start, index_end in zip(chosen_indices[:-1], chosen_indices[1:]):
+                    if raw_freqs[index_end] == f_max_raw_hz:
+                        index_end = index_end - 1
+                    f_start = raw_freqs[index_start+1]
+                    f_end = raw_freqs[index_end]
+                    freqs_in_range, values_in_range = self.get_raw_slice(f_start, f_end)
+                    max_value_in_range = np.max(values_in_range)
+                    max_value_index = np.where(values_in_range == max_value_in_range)[0]
+                    freq_slice.append(float(freqs_in_range[max_value_index][0]))
+            freq_slice.append(f_max_raw_hz)
 
+        # Частоты с максимальными значениями
+        freq_slice = np.array(freq_slice)
+        # Максимальные найденные значения в поддиапазонах
+        values_slice = self.get_values_for_frequencies(freq_slice)
 
-
-
-
-
-
-
+        # Конвертация частот в формат запрашиваемых
+        ratio = FrequencyConverter.get_ratio(from_unit='Hz', to_unit=freq_unit)
+        freq_slice = freq_slice * ratio
+        return Trace(freq_slice,values_slice, freq_unit, self.values_units)
 
 
     def get_max_value_in_range(self, f_min_hz: float, f_max_hz: float) -> float:

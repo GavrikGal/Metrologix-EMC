@@ -31,6 +31,7 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         final_parameter.name = self.config.get('parameter_system_name', 'S21')
 
         # Переносим сырые многомерные матрицы для отчетов протокола
+        # todo: В Parameter есть параметр для хранения исходных данных - использовать его
         final_parameter.sys1_traces = system1_param.sys_raw_traces
         final_parameter.sys1_unc = system1_param.uncertainty_trace.values
         final_parameter.sys2_traces = system2_param.sys_raw_traces
