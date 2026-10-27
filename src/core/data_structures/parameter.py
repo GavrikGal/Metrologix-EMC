@@ -1,8 +1,11 @@
 # src/core/data_structures/parameter.py
+import logging
 from typing import Optional
 import numpy as np
 from .trace import Trace
 from .uncertainty import Uncertainty
+
+logger = logging.getLogger("Metrologix")
 
 
 class Parameter:
@@ -24,8 +27,8 @@ class Parameter:
         return values, None
 
 
-    def get_raw_data_in_frequency_range(self, f_min: float, f_max: float, data_type: str = 'value',
-                                        points_count: int = 2, freq_unit: str = 'Hz') -> Trace|None:
+    def get_raw_max_data_in_frequency_range(self, f_min: float, f_max: float, data_type: str = 'value',
+                                            points_count: int = 2, freq_unit: str = 'Hz') -> Trace|None:
         if data_type == 'value':
             return self.value_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
         elif data_type == 'uncertainty':
@@ -35,6 +38,26 @@ class Parameter:
                 return None
         else:
             raise ValueError(f'Тип данных {data_type} не поддерживается')
+
+
+    def get_block_of_raw_data_for_frequencies(self, target_frequencies: np.ndarray):
+        """
+        Возвращает пачку исходных данных из raw_data для заданных частот
+        :param target_frequencies: частоты на которых должны быть представлены данные
+        :return: список Trace исходных данных для заданных частот
+        """
+        if len(self.raw_data) == 0:
+            return []
+
+
+        if not isinstance(self.raw_data, list):
+            raise NotImplementedError(f'Не реализован вывод блока данных для {type(self.raw_data)}')
+
+        block_of_raw_data = []
+        for raw_piece_of_data in self.raw_data:
+            block_of_raw_data.append(raw_piece_of_data.get_values_for_frequencies(target_frequencies))
+        return block_of_raw_data
+
 
         # todo: сделать метод, который выдает get_raw_data_in_frequency_range() для пачки исходных данных
 

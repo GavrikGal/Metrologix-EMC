@@ -66,6 +66,14 @@ class Uncertainty(Trace):
         slice_freqs, slice_raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
         return float(np.max(slice_raw_values)), float(np.max(slice_raw_values / self.divisor))
 
+    def get_raw_max_values_in_frequency_range(self, f_min: float, f_max: float,
+                                              points_count: int = 2, freq_unit: str = 'Hz') -> 'Trace':
+        uncertainty_trace = super().get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
+        uncertainty_trace.values = uncertainty_trace.values / self.divisor
+        return Uncertainty(uncertainty_trace.frequencies, uncertainty_trace.values,
+                           freq_unit, self.values_units, self.distribution_type, self.k_factor,
+                           self.is_symmetric, self.asymmetric_label)
+
 
     # =========================================================================
     # МЕТРОЛОГИЧЕСКИЙ RSS ПОЛИМОРФИЗМ

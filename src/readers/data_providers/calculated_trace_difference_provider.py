@@ -20,30 +20,72 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         reader_settings = self.config.get('reader_settings', {})
         columns_mapping = reader_settings.get('use_columns', )
 
-        system1_param = self._load_system_raw_parameter(self.config['system1_baseline'], reader_settings, columns_mapping)
-        system2_param = self._load_system_raw_parameter(self.config['system2_with_cable'], reader_settings, columns_mapping)
+        system1_param = self._load_system_raw_parameter(self.config['system1_baseline'], reader_settings,
+                                                        columns_mapping, parameter_name='baseline')
+        system2_param = self._load_system_raw_parameter(self.config['system2_with_cable'], reader_settings,
+                                                        columns_mapping, parameter_name='with_cable')
 
-        # Вычитаем один объект из другого оператором!
-        # Иммутабельный оператор '-' вернет новый Parameter, сохранив исходные системы целыми
+        # Вычитание одного измеренного параметра из другого
         final_parameter = system2_param - system1_param
 
-        # Задаем динамическое имя параметра из YAML-конфигурации прибора
+        # Задание динамического имени параметра из YAML-конфигурации прибора
         final_parameter.name = self.config.get('parameter_system_name', 'S21')
+
+        # Сохранение исходных измеренных параметров
+        final_parameter.raw_data = [system1_param, system2_param]
 
         # Переносим сырые многомерные матрицы для отчетов протокола
         # todo: В Parameter есть параметр для хранения исходных данных - использовать его
-        final_parameter.sys1_traces = system1_param.sys_raw_traces
-        final_parameter.sys1_unc = system1_param.uncertainty_trace.values
-        final_parameter.sys2_traces = system2_param.sys_raw_traces
-        final_parameter.sys2_unc = system2_param.uncertainty_trace.values
+        # final_parameter.sys1_traces = system1_param.sys_raw_traces
+        # final_parameter.sys1_unc = system1_param.uncertainty_trace.values
+        # final_parameter.sys2_traces = system2_param.sys_raw_traces
+        # final_parameter.sys2_unc = system2_param.uncertainty_trace.values
 
         return final_parameter
 
 
-    def _load_system_raw_parameter(self, paths_config, reader_settings, columns_mapping) -> Parameter:
+    def _load_system_raw_parameter(self, paths_config, reader_settings,
+                                   columns_mapping, parameter_name: str) -> Parameter:
         """Внутренний метод: последовательно считывает файлы системы, применяет offset и считает СКО"""
         only_traces_columns = [col for col in columns_mapping if col != 0]
         number_of_traces = len(only_traces_columns)
+
+        # Чтение датафрейма данных из файлов
+        df_clean = self._read_raw_data(paths_config, reader_settings, columns_mapping)
+
+        # Извлекаем финальный массив частот (переводим ось в Герцы)
+        raw_frequencies = df_clean[0].values.astype(float)
+        raw_data = []
+        # for trace in df_clean[only_traces_columns].values:
+        for trace in only_traces_columns:
+            raw_data.append(Trace(raw_frequencies, df_clean[trace].values))
+
+
+
+        # 🌟 МАТЕМАТИЧЕСКИЙ РАСЧЕТ СРЕДНЕГО И СКО (Неопределенность типа А)
+        # mean(axis=1) считает среднюю трассу затухания
+        mean_values = df_clean[only_traces_columns].mean(axis=1).values
+        # std(axis=1, ddof=1) считает экспериментальное СКО для n-трасс
+        std_deviations = df_clean[only_traces_columns].std(axis=1, ddof=1).values
+
+        # Стандартная неопределенность среднего значения (u = s / sqrt(n))
+        u_type_a_values = std_deviations / np.sqrt(number_of_traces)
+
+        # Собираем промежуточный Parameter
+        value_trace = Trace(raw_frequencies, mean_values)
+        uncertainty_trace = Uncertainty(raw_frequencies, u_type_a_values, distribution_type='normal', k_factor=1.0)
+
+        parameter = Parameter(name=parameter_name, value_trace=value_trace, uncertainty_trace=uncertainty_trace)
+
+        # Кэшируем сырую многомерную матрицу отсчетов для будущего рендерера таблиц
+        # parameter.sys_raw_traces = df_clean[only_traces_columns].values
+        parameter.raw_data = raw_data
+
+        return parameter
+
+
+    def _read_raw_data(self, paths_config, reader_settings, columns_mapping) -> pd.DataFrame:
+        only_traces_columns = [col for col in columns_mapping if col != 0]
 
         # Подготовка списка файлов и их индивидуальных смещений дБ (offset)
         file_items = []
@@ -79,27 +121,5 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         df_merged = pd.concat(data_frames, ignore_index=True).sort_values(0)
         # df_clean = df_merged.drop_duplicates(subset=[0], keep='last')
         df_clean = df_merged
+        return df_clean
 
-        # Извлекаем финальный массив частот (переводим ось в Герцы)
-        raw_frequencies = df_clean[0].values.astype(float)
-
-        # 🌟 МАТЕМАТИЧЕСКИЙ РАСЧЕТ СРЕДНЕГО И СКО (Неопределенность типа А)
-        # mean(axis=1) считает среднюю трассу затухания
-        mean_values = df_clean[only_traces_columns].mean(axis=1).values
-        # std(axis=1, ddof=1) считает экспериментальное СКО для n-трасс
-        std_deviations = df_clean[only_traces_columns].std(axis=1, ddof=1).values
-
-        # Стандартная неопределенность среднего значения (u = s / sqrt(n))
-        u_type_a_values = std_deviations / np.sqrt(number_of_traces)
-
-        # Собираем промежуточный Parameter
-        value_trace = Trace(raw_frequencies, mean_values)
-        uncertainty_trace = Uncertainty(raw_frequencies, u_type_a_values, distribution_type='normal', k_factor=1.0)
-
-        parameter = Parameter(name=self.config.get('parameter_system_name', 'S21'),
-                              value_trace=value_trace, uncertainty_trace=uncertainty_trace)
-
-        # Кэшируем сырую многомерную матрицу отсчетов для будущего рендерера таблиц
-        parameter.sys_raw_traces = df_clean[only_traces_columns].values
-
-        return parameter

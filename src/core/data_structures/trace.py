@@ -36,6 +36,8 @@ class Trace:
 
 
     def get_values_for_frequencies(self, frequencies: np.ndarray) -> np.ndarray:
+        if np.array_equal(frequencies, self.frequencies):
+            return self.values
         return np.interp(frequencies, self.frequencies, self.values)
 
 
@@ -83,9 +85,6 @@ class Trace:
 
         # Получение всех исходных данных в заданном диапазоне частот
         raw_freqs, raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
-
-        logger.debug(f'{raw_freqs=}')
-        logger.debug(f'{raw_values=}')
 
         f_min_raw_hz = float(raw_freqs[0])
         f_max_raw_hz = float(raw_freqs[-1])
