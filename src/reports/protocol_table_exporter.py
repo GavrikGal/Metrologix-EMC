@@ -42,8 +42,8 @@ class ProtocolTableExporter:
                 protocol_dict[f'{sys1_name} (Trace_{t_idx + 1}), dBuV'] = np.round(sys1_trace, 3)
 
         # 2. Добавляем промежуточный расчет: Среднее значение Опоры
-        protocol_dict[f'{sys1_name} (Mean), dBuV'] = np.round(raw_slice_data['sys1_mean_db'].flatten(), 3)
-        protocol_dict[f'{sys1_name} (Uncertainty), dB'] = np.round(raw_slice_data['sys1_std_db'].flatten(), 3)
+        protocol_dict[f'{sys1_name} (Mean), dBuV'] = np.round(raw_slice_data['sys1_mean_db'], 3)
+        protocol_dict[f'{sys1_name} (Uncertainty), dB'] = np.round(raw_slice_data['sys1_std_db'], 3)
 
         # 3. Добавляем сырые трассы Измеряемого тракта (Target / Система 2)
         sys2_traces = raw_slice_data['sys2_traces']
@@ -53,8 +53,8 @@ class ProtocolTableExporter:
                 protocol_dict[f'{sys2_name} (Trace_{t_idx + 1}), dBuV'] = np.round(sys2_trace, 3)
 
         # 4. Добавляем промежуточный расчет: Среднее значение Опоры
-        protocol_dict[f'{sys2_name} (Mean), dBuV'] = np.round(raw_slice_data['sys2_mean_db'].flatten(), 3)
-        protocol_dict[f'{sys2_name} (Uncertainty), dB'] = np.round(raw_slice_data['sys2_std_db'].flatten(), 3)
+        protocol_dict[f'{sys2_name} (Mean), dBuV'] = np.round(raw_slice_data['sys2_mean_db'], 3)
+        protocol_dict[f'{sys2_name} (Uncertainty), dB'] = np.round(raw_slice_data['sys2_std_db'], 3)
 
         # 3. Добавляем сырые трассы Измеряемого тракта (Target / Система 2)
         # sys2_matrix = raw_slice_data['sys2_traces']
@@ -67,7 +67,7 @@ class ProtocolTableExporter:
         # protocol_dict['Target_Uncertainty [dB]'] = np.round(raw_slice_data['sys2_std_db'].flatten(), 3)
 
         # 💡 ИСПРАВЛЕНИЕ: Имя столбца теперь формируется ДИНАМИЧЕСКИ на основе param_name!
-        protocol_dict[f'Calculated {param_name}, dB'] = np.round(raw_slice_data['values_db'], 3)
+        protocol_dict[f'Calculated {param_name}, dB'] = np.round(raw_slice_data['values_db'].values, 3)
 
         # Финальные метрологические результаты неопределенностей
         protocol_dict['Uncertainty u(xi) (k=1), dB '] = np.round(raw_slice_data['raw_uncertainty_db'], 4)

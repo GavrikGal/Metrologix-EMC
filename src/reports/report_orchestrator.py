@@ -1,6 +1,9 @@
 # src/reports/report_orchestrator.py
 import os
 import numpy as np
+
+from src.core.data_structures.parameter import Parameter
+from src.core.data_structures.uncertainty import Uncertainty
 from src.core.task import Task
 from src.core.hardware import Hardware
 from src.core.math_models import FrequencyConverter
@@ -26,6 +29,7 @@ class ReportOrchestrator:
 
     def generate_plots(self) -> None:
         """Отрисовка спектральных графиков Matplotlib для всех элементов из задачи"""
+        #todo: надо еще лимиты уметь передавать и рисовать трассой, а не только значением
         proto_cfg = self.task.config.get('protocol_output', {})
         if not proto_cfg or not proto_cfg.get('items'):
             return
@@ -40,21 +44,32 @@ class ReportOrchestrator:
 
             parameter = device.processed_parameters[param_name]
             device_folder = self.task.config['hardware_setup'].get(device_role)
+            plots_settings = self.settings.get("visualizer_setup").get("plots_settings", {})
+            plot_points_count = plots_settings.get('plot_points_count', 400)
+
 
             for sub in item.get('sub_plots', []):
                 ratio = FrequencyConverter.get_ratio(from_unit=sub.get('unit', 'Hz'), to_unit='Hz')
                 f_min_hz = float(sub.get('freq_min')) * ratio
                 f_max_hz = float(sub.get('freq_max')) * ratio
 
-                plot_freqs = np.linspace(f_min_hz, f_max_hz, num=400)
-                interp_v, interp_u = parameter.get_values_for_frequencies(plot_freqs)
+                # plot_freqs = np.linspace(f_min_hz, f_max_hz, num=400)
+                # interp_v, interp_u = parameter.get_values_for_frequencies(plot_freqs)
+                values_trace, uncertainties_trace = parameter.get_raw_max_data_in_frequency_range(f_min_hz, f_max_hz,
+                                                                             points_count=plot_points_count,
+                                                                             max_by='value')
+                # uncertainties_trace = parameter.get_values_for_frequencies()
+                # uncertainties_trace = parameter.get_raw_max_data_in_frequency_range(f_min_hz, f_max_hz,
+                #                                                                     points_count=plot_points_count,
+                #                                                                     max_by='uncertainty')
 
                 # Защита: если пришел None (нет неопределенности), превращаем в нули для графика
-                if interp_u is None:
-                    interp_u = np.zeros_like(plot_freqs)
+                if uncertainties_trace is None:
+                    uncertainties_trace = Uncertainty.create_zeros_like(values_trace)
 
                 target_dir = os.path.join(self.task.output_dir, "plots", device_folder)
-                self.plot_renderer.render(target_dir, device.config, param_name, plot_freqs, interp_v, interp_u, sub)
+                self.plot_renderer.render(target_dir, device.config, param_name,
+                                          values_trace, uncertainties_trace, sub)
 
     def generate_data_tables(self) -> None:
         """Формирование CSV таблиц реальных физических отсчетов для всех элементов из задачи"""

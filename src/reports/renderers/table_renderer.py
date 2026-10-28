@@ -4,6 +4,7 @@ import numpy as np
 import logging
 
 from src.core.data_structures import uncertainty
+from src.core.data_structures.parameter import Parameter
 from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 from src.core.utils import logger
@@ -18,16 +19,17 @@ class TableRenderer(BaseRenderer):
     """Компонент выборки реальных физических точек и генерации CSV-таблиц протокола"""
 
     def render(self, output_dir: str, device_config: dict, param_name: str,
-               parameter, f_min_hz: float, f_max_hz: float, target_pts_count: int, sub_unit: str):
+               parameter: Parameter, f_min_hz: float, f_max_hz: float, target_pts_count: int, sub_unit: str):
 
         # 🌟 ИСПРАВЛЕНИЕ: Запрашиваем метрологически чистый срез реальных точек у самой Трассы
         # raw_freqs, raw_values = parameter.value_trace.get_raw_slice(f_min_hz, f_max_hz)
 
         # Получение трассы с N максимальных измеренных неопределенностей
-        raw_uncertainty = parameter.uncertainty_trace.get_raw_max_values_in_frequency_range(f_min_hz, f_max_hz,
-                                                                                            target_pts_count)
+        final_values, raw_uncertainty = parameter.get_raw_max_data_in_frequency_range(f_min_hz, f_max_hz,
+                                                                                      max_by='value',
+                                                                                      points_count=target_pts_count)
         # Частоты N максимальных измеренных неопределенностей
-        final_freqs = raw_uncertainty.frequencies
+        final_freqs = final_values.frequencies
 
         # Алгоритм прореживания выборки до целевого количества (table_points_count)
         # if len(raw_freqs) <= target_pts_count:
@@ -58,7 +60,7 @@ class TableRenderer(BaseRenderer):
         # final_values = raw_values[chosen_indices]
 
         # Получение значений, где неопределенность максимальна
-        final_values, _ = parameter.get_values_for_frequencies(final_freqs)
+        # final_values, _ = parameter.get_values_for_frequencies(final_freqs)
 
         # Сборка структур многомерных замещений
         if parameter.raw_data is not None:
@@ -91,9 +93,9 @@ class TableRenderer(BaseRenderer):
             sys2_name = 'System 2'
             # sys1_slice = np.zeros((len(final_freqs), 1))
             # sys2_slice = np.zeros((len(final_freqs), 1))
-            sys1_slice = Trace.create_zeros_like(raw_uncertainty)
-            sys2_slice = Trace.create_zeros_like(raw_uncertainty)
-            sys1_mean, sys2_mean = final_values, final_values
+            sys1_slice = [Trace.create_zeros_like(raw_uncertainty).values]
+            sys2_slice = [Trace.create_zeros_like(raw_uncertainty).values]
+            sys1_mean, sys2_mean = final_values.values, final_values.values
             sys1_std, sys2_std = final_u_std, final_u_std
 
         raw_slice = {
@@ -107,6 +109,6 @@ class TableRenderer(BaseRenderer):
             'sys1_std_db': sys1_std, 'sys2_std_db': sys2_std
         }
 
-        filename = NameBuilder.build_standard_filename(device_config, f_min_hz, f_max_hz)
+        filename = NameBuilder.build_standard_filename(device_config, f_min_hz, f_max_hz, param_name=param_name)
         os.makedirs(output_dir, exist_ok=True)
         ProtocolTableExporter.export_raw_slice(output_dir, filename, raw_slice, sub_unit, param_name)

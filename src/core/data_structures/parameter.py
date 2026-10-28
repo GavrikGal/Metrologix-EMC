@@ -27,17 +27,38 @@ class Parameter:
         return values, None
 
 
-    def get_raw_max_data_in_frequency_range(self, f_min: float, f_max: float, data_type: str = 'value',
-                                            points_count: int = 2, freq_unit: str = 'Hz') -> Trace|None:
-        if data_type == 'value':
-            return self.value_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
-        elif data_type == 'uncertainty':
+    def get_raw_max_data_in_frequency_range(self, f_min: float, f_max: float, max_by: str = 'value',
+                                            points_count: int = 2, freq_unit: str = 'Hz') -> tuple[Trace, Uncertainty|None]:
+        if max_by == 'value':
+            values_trace = self.value_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
+            uncertainty_trace = self.uncertainty_trace
+            if uncertainty_trace is not None:
+                frequencies = values_trace.frequencies
+                uncertainty_values = uncertainty_trace.get_values_for_frequencies(frequencies)
+                uncertainty_trace = Uncertainty(frequencies, uncertainty_values,
+                                                freq_unit, uncertainty_trace.values_units,
+                                                uncertainty_trace.distribution_type, uncertainty_trace.k_factor,
+                                                uncertainty_trace.is_symmetric, uncertainty_trace.asymmetric_label)
+            return values_trace, uncertainty_trace
+
+            # return self.value_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
+        elif max_by == 'uncertainty':
             if self.uncertainty_trace is not None:
-                return self.uncertainty_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
+                uncertainty_trace = self.uncertainty_trace.get_raw_max_values_in_frequency_range(f_min, f_max,
+                                                                                                 points_count,
+                                                                                                 freq_unit)
+                frequencies = uncertainty_trace.frequencies
+                values = self.value_trace.get_values_for_frequencies(frequencies)
+                values_trace = Trace(frequencies, values, freq_unit, self.value_trace.values_units)
+
+                return values_trace, uncertainty_trace
+
+                # return self.uncertainty_trace.get_raw_max_values_in_frequency_range(f_min, f_max, points_count, freq_unit)
             else:
-                return None
+                raise ValueError(f'В параметре {self.name} неопределенность не задана. '
+                                 f'Вывод данных по максимуму неопределенности невозможен')
         else:
-            raise ValueError(f'Тип данных {data_type} не поддерживается')
+            raise ValueError(f'Тип данных {max_by} не поддерживается')
 
 
     def get_block_of_raw_data_for_frequencies(self, target_frequencies: np.ndarray):
@@ -57,9 +78,6 @@ class Parameter:
         for raw_piece_of_data in self.raw_data:
             block_of_raw_data.append(raw_piece_of_data.get_values_for_frequencies(target_frequencies))
         return block_of_raw_data
-
-
-        # todo: сделать метод, который выдает get_raw_data_in_frequency_range() для пачки исходных данных
 
 
     def __add__(self, other: 'Parameter') -> 'Parameter':

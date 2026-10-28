@@ -231,6 +231,9 @@ class Trace:
 
     def __mul__(self, other: 'Trace') -> 'Trace':
         self_lin = self.to_linear()
+        logger.debug(f'{self_lin.values=}')
+        logger.debug(f'{self_lin.frequencies=}')
+        logger.debug(f'{other=}')
         other_lin = other.to_linear()
 
         if len(self_lin.frequencies) == len(other_lin.frequencies) and np.allclose(self_lin.frequencies,

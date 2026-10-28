@@ -3,6 +3,9 @@ import logging
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+
+from src.core.data_structures.trace import Trace
+from src.core.data_structures.uncertainty import Uncertainty
 from src.reports.base_renderer import BaseRenderer
 from src.core.math_models import FrequencyConverter
 from src.reports.utils.name_builder import NameBuilder
@@ -18,12 +21,13 @@ class PlotRenderer(BaseRenderer):
         self.default_style_config = visualizer_setup.get("style_settings", {})
 
     def render(self, output_dir: str, device_config: dict, param_name: str,
-               freqs_hz: np.ndarray, values: np.ndarray, u_std: np.ndarray, sub_cfg: dict) -> None:
+               values: Trace, uncertainty: Uncertainty, sub_cfg: dict) -> None:
         """
         Шаблонный метод отрисовки графического отчета.
         Координирует вызовы специализированных микро-методов.
         """
         # Подготовка масштабированных частот
+        freqs_hz = values.frequencies
         target_unit = sub_cfg.get('unit', self.default_plots_config.get('unit', 'MHz'))
         ratio = FrequencyConverter.get_ratio(from_unit="Hz", to_unit=target_unit)
         freqs_scaled = freqs_hz * ratio
@@ -41,19 +45,20 @@ class PlotRenderer(BaseRenderer):
         plt.figure(figsize=(10, 5))
 
         # Последовательная пошаговая сборка слоев графика
-        self._draw_main_trace(freqs_scaled, values, device_config, style_provider)
-        self._draw_uncertainty_corridor(freqs_scaled, values, u_std, style_provider)
+        self._draw_main_trace(values, target_unit, device_config, style_provider)
+        self._draw_uncertainty_corridor(values, uncertainty, target_unit, style_provider)
         self._draw_limit_line(sub_cfg, style_provider)
 
         # Фиксируем границы окна Matplotlib перед наложением масок
         plt_x_min, plt_x_max = plt.xlim()
-
         self._draw_shading_zones(plt_x_min, plt_x_max, f_min_spec, f_max_spec, style_provider)
-        self._draw_maximum_uncertainty_annotation(freqs_scaled, values, u_std, f_min_spec, f_max_spec)
+
+        self._draw_maximum_uncertainty_annotation(values, uncertainty, target_unit, f_min_spec, f_max_spec)
         self._apply_grid_and_axes_settings(sub_cfg, target_unit, param_name, plt_x_min, plt_x_max)
 
         # Сохранение готового файла
-        filename = NameBuilder.build_standard_filename(device_config, freqs_hz.min(), freqs_hz.max(), ".png")
+        filename = NameBuilder.build_standard_filename(device_config, freqs_hz.min(), freqs_hz.max(),
+                                                       ".png", param_name=param_name)
         os.makedirs(output_dir, exist_ok=True)
         plt.savefig(os.path.join(output_dir, filename), dpi=200, bbox_inches='tight')
         logger.info(f'Создан график: {filename}')
@@ -64,20 +69,38 @@ class PlotRenderer(BaseRenderer):
     # МИКРО-МЕТОДЫ ОТРИСОВКИ СЛОЕВ (САМОДОКУМЕНТИРУЕМЫЙ КОД)
     # =========================================================================
 
-    def _draw_main_trace(self, x: np.ndarray, y: np.ndarray, dev_config: dict, style) -> None:
+    # def _draw_main_trace(self, x: np.ndarray, y: np.ndarray, dev_config: dict, style) -> None:
+    @staticmethod
+    def _draw_main_trace(values: Trace, freq_unit: str, dev_config: dict, style) -> None:
         """Отрисовка основной спектральной линии прибора"""
-        label_id = dev_config.get('device_short_id', 'Device')
-        plt.plot(x, y, label=label_id, color=style('line_color'), lw=style('line_width'), zorder=3)
+        y = values.values
+        x = values.frequencies
 
-    def _draw_uncertainty_corridor(self, x: np.ndarray, y: np.ndarray, u_std: np.ndarray, style) -> None:
+        # Конвертация единиц измерения частоты, для которых хранятся данные, в запрашиваемые
+        ratio = FrequencyConverter.get_ratio(from_unit="Hz", to_unit=freq_unit)
+        x_scaled = x * ratio
+
+        label_id = dev_config.get('device_short_id', 'Device')
+        plt.plot(x_scaled, y, label=label_id, color=style('line_color'), lw=style('line_width'), zorder=3)
+
+
+    @staticmethod
+    def _draw_uncertainty_corridor(values: Trace, uncertainty: Uncertainty, freq_unit: str, style) -> None:
         """Отрисовка полупрозрачного коридора расширенной неопределенности k=2"""
-        # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
-        u_expanded = u_std * 2
-        # u_expanded = u_std
+        # В значения (values) неопределенности (Uncertainty) хранится расширенная неопределенность
+        y = values.values
+        u_expanded = uncertainty.values
+        x = values.frequencies
+
+        # Конвертация единиц измерения частоты, для которых хранятся данные, в запрашиваемые
+        ratio = FrequencyConverter.get_ratio(from_unit="Hz", to_unit=freq_unit)
+        x_scaled = x * ratio
+
         line_w = style('line_width') / 2 if style('line_width') else 0.5
-        plt.fill_between(x, y - u_expanded, y + u_expanded,
+        plt.fill_between(x_scaled, y - u_expanded, y + u_expanded,
                          color=style('uncertainty_color'), alpha=style('uncertainty_alpha'),
                          lw=line_w, label='Расширенная неопределенность (k=2)', zorder=2)
+
 
     def _draw_limit_line(self, sub_cfg: dict, style) -> None:
         """Отрисовка горизонтальной линии допуска/лимита CISPR"""
@@ -87,7 +110,9 @@ class PlotRenderer(BaseRenderer):
             plt.axhline(y=limit_val, color=style('limit_color'), linestyle=style('limit_style'),
                         lw=style('limit_width'), label='Лимит', zorder=4)
 
-    def _draw_shading_zones(self, x_min: float, x_max: float, f_min: float, f_max: float, style) -> None:
+
+    @staticmethod
+    def _draw_shading_zones(x_min: float, x_max: float, f_min: float, f_max: float, style) -> None:
         """Метрологическое затемнение нерабочих частотных областей за границами спецификации"""
         color = style('shading_color')
         alpha = style('shading_alpha')
@@ -96,16 +121,22 @@ class PlotRenderer(BaseRenderer):
         if x_max > f_max:
             plt.axvspan(f_max, x_max, color=color, alpha=alpha, zorder=1)
 
-    def _draw_maximum_uncertainty_annotation(self, x: np.ndarray, y: np.ndarray, u_std: np.ndarray, f_min: float,
-                                             f_max: float) -> None:
+    @staticmethod
+    def _draw_maximum_uncertainty_annotation(values: Trace, uncertainty: Uncertainty, freq_unit: str,
+                                             f_min: float, f_max: float) -> None:
         """Поиск наихудшей метрологической точки и вывод стрелки-выноски с её параметрами"""
-        # todo: надо не самому делать расширенную неопределенность, а смотреть какое распределение у нее
-        u_expanded = u_std * 2
-        # u_expanded = u_std
-        mask = (x >= f_min) & (x <= f_max)
+        # В значения (values) неопределенности (Uncertainty) хранится расширенная неопределенность
+        y = values.values
+        u_expanded = uncertainty.values
+        x = values.frequencies
+
+        # Конвертация единиц измерения частоты, для которых хранятся данные, в запрашиваемые
+        ratio = FrequencyConverter.get_ratio(from_unit="Hz", to_unit=freq_unit)
+        x_scaled = x * ratio
+        mask = (x_scaled >= f_min) & (x_scaled <= f_max)
 
         if np.any(mask):
-            u_zone, f_zone, v_zone = u_expanded[mask], x[mask], y[mask]
+            u_zone, f_zone, v_zone = u_expanded[mask], x_scaled[mask], y[mask]
             m_idx = np.argmax(u_zone)
 
             # Ставим черную точку на максимуме
@@ -113,22 +144,51 @@ class PlotRenderer(BaseRenderer):
 
             # Текст и геометрия стрелки выноски
             text = f"F={f_zone[m_idx]:.3f}\nMax={u_zone[m_idx]:.3f}"
+
+            # Получаем текущие границы оси Y, чтобы определить, где находится точка
             y_min, y_max = plt.ylim()
-            y_text_pos = y_min - (y_min - v_zone[m_idx]) / 2
-            x_text_pos = f_zone[m_idx] - (x.max() - x.min()) * 0.15
-            connectionstyle = "angle,angleA=0,angleB=90,rad=5"
+            y_range = abs(y_max - y_min)
 
-            if x_text_pos < x.min():
-                x_text_pos = f_zone[m_idx] + (x.max() - x.min()) * 0.15
-                y_text_pos = y_max + (y_min - v_zone[m_idx]) / 5
-                connectionstyle = "angle,angleA=90,angleB=0,rad=5"
+            # Проверяем, находится ли точка в верхней четверти (для S21 значения отрицательные, поэтому y_max — это верх)
+            is_in_top_quarter = v_zone[m_idx] > (y_max - 0.25 * y_range)
 
+            if is_in_top_quarter:
+                # Точка вверху: смещаем текст ВЛЕВО (стрелка выходит из правой боковой стороны блока)
+                # Если точка слишком близко к левому краю, можно изменить на 50 (вправо)
+                x_offset = -60 if f_zone[m_idx] > (plt.xlim()[1] * 0.2) else 60
+                y_offset = 0  # Строго по центру боковой стороны
+                ha = 'right' if x_offset < 0 else 'left'
+                va = 'center'
+            else:
+                # Точка ниже: смещаем текст ВВЕРХ (стрелка выходит строго снизу блока)
+                x_offset = 0  # Строго по центру над точкой
+                y_offset = 40  # Смещение вверх в пунктах
+                ha = 'center'
+                va = 'bottom'
+
+            # Рисуем аннотацию
             plt.annotate(
-                text, xy=(f_zone[m_idx], v_zone[m_idx]), xytext=(x_text_pos, y_text_pos),
-                arrowprops=dict(arrowstyle="->", color="black", lw=0.7,
-                                connectionstyle=connectionstyle),
-                bbox=dict(boxstyle="round,pad=0.2,rounding_size=0.15", fc="white", edgecolor="lightgrey", lw=0.7),
-                fontsize=9, zorder=6
+                text,
+                xy=(f_zone[m_idx], v_zone[m_idx]),
+                xytext=(x_offset, y_offset),
+                textcoords='offset points',  # Ключевой момент: смещение в пунктах, а не в координатах графика
+                ha=ha,
+                va=va,
+                arrowprops=dict(
+                    arrowstyle="->",
+                    color="black",
+                    lw=0.7,
+                    # Простая прямая стрелка выглядит аккуратнее, но можно оставить и "angle"
+                    connectionstyle="arc3,rad=0"
+                ),
+                bbox=dict(
+                    boxstyle="round,pad=0.3,rounding_size=0.15",
+                    fc="white",
+                    edgecolor="lightgrey",
+                    lw=0.7
+                ),
+                fontsize=9,
+                zorder=6
             )
 
     def _apply_grid_and_axes_settings(self, sub_cfg: dict, unit: str, param_name: str, x_min: float,
