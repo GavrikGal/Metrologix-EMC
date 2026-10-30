@@ -53,7 +53,8 @@ class PlotRenderer(BaseRenderer):
         plt_x_min, plt_x_max = plt.xlim()
         self._draw_shading_zones(plt_x_min, plt_x_max, f_min_spec, f_max_spec, style_provider)
 
-        self._draw_maximum_uncertainty_annotation(values, uncertainty, target_unit, f_min_spec, f_max_spec)
+        # todo: в аннотациях (из-за большего количества точке на графике) вычисляется и отображается не тот же максимум, что в таблице для протокола
+        # self._draw_maximum_uncertainty_annotation(values, uncertainty, target_unit, f_min_spec, f_max_spec)
         self._apply_grid_and_axes_settings(sub_cfg, target_unit, param_name, plt_x_min, plt_x_max)
 
         # Сохранение готового файла

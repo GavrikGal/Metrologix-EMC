@@ -86,6 +86,7 @@ class ReportOrchestrator:
                 continue
 
             parameter = device.processed_parameters[param_name]
+
             device_folder = self.task.config['hardware_setup'].get(device_role)
 
             for sub in item.get('sub_plots', []):

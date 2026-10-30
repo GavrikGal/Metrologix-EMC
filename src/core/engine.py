@@ -57,10 +57,11 @@ class MetrologixEngine:
         orchestrator = ReportOrchestrator(self.settings, self.task, self.hardware)
         protocol_config = self.task.config.get('protocol_output', {})
 
-        if protocol_config and protocol_config.get('generate_plots', False):
-            orchestrator.generate_plots()
+
         if protocol_config and protocol_config.get('generate_data_tables', False):
             orchestrator.generate_data_tables()
+        if protocol_config and protocol_config.get('generate_plots', False):
+            orchestrator.generate_plots()
         if self.task.config.get('hardware_corrections_output', {}).get('generate_corrections', False):
             orchestrator.generate_hardware_corrections()
 
