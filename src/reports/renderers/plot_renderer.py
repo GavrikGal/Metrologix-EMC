@@ -34,6 +34,8 @@ class PlotRenderer(BaseRenderer):
 
         f_min_spec = float(sub_cfg.get('freq_min', freqs_scaled.min()))
         f_max_spec = float(sub_cfg.get('freq_max', freqs_scaled.max()))
+        f_min_spec = freqs_scaled.min()
+        f_max_spec = freqs_scaled.max()
 
         # Получение стилей (динамический fallback)
         st = sub_cfg.get('style_settings', {})
@@ -90,7 +92,7 @@ class PlotRenderer(BaseRenderer):
         """Отрисовка полупрозрачного коридора расширенной неопределенности k=2"""
         # В значения (values) неопределенности (Uncertainty) хранится расширенная неопределенность
         y = values.values
-        u_expanded = uncertainty.values
+        u_expanded = uncertainty.get_values_for_frequencies(values.frequencies) * 2
         x = values.frequencies
 
         # Конвертация единиц измерения частоты, для которых хранятся данные, в запрашиваемые

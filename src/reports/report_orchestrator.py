@@ -1,4 +1,5 @@
 # src/reports/report_orchestrator.py
+import logging
 import os
 import numpy as np
 
@@ -12,6 +13,8 @@ from src.core.math_models import FrequencyConverter
 from src.reports.renderers.plot_renderer import PlotRenderer
 from src.reports.renderers.table_renderer import TableRenderer
 from src.reports.renderers.correction_renderer import CorrectionRenderer
+
+logger = logging.getLogger("Metrologix")
 
 
 class ReportOrchestrator:

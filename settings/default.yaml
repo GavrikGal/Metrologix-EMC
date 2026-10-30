@@ -5,7 +5,7 @@ visualizer_setup:
     show_limit_line: false
     limit_value_db: -1.0
     table_points_count: 30      # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
-    plot_points_count: 600
+    plot_points_count: 400
 
   style_settings:
     line_color: "tab:blue"      # Темно-синий цвет основной кривой прибора

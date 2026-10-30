@@ -25,6 +25,7 @@ class CISPRBudgetCalculator:
 
             if parameter.uncertainty_trace:
                 # Делегирование: Неопределенность сама считает свои максимумы в диапазоне задачи
+                # todo: Надо чтобы брались данные, которые выводились в таблицы протоколов
                 max_u_raw, u_std_val = parameter.uncertainty_trace.get_max_uncertainties_in_range(
                     task.frequency_min_hz, task.frequency_max_hz
                 )
