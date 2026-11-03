@@ -180,14 +180,14 @@ protocol_output:
       target_parameter: "S21"
       show_uncertainty: true
       sub_plots:
-#        - title: "S21 - SUCOFLEX 1.5м + 10м"
-#          unit: "MHz"
-#          freq_min: 0.15         # 150 кГц
-#          freq_max: 30.0         # 30 МГц
-#          x_scale: "linear"              # "log" / "linear"
-#          show_limit_line: false         # true/false
-#          limit_value_db: -1.0          # todo: лимиты должны браться из задачи
-#          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+        - title: "S21 - SUCOFLEX 1.5м + 10м"
+          unit: "MHz"
+          freq_min: 0.15         # 150 кГц
+          freq_max: 30.0         # 30 МГц
+          x_scale: "linear"              # "log" / "linear"
+          show_limit_line: false         # true/false
+          limit_value_db: -1.0          # todo: лимиты должны браться из задачи
+          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
           # 💡 КАСТОМИЗАЦИЯ СТИЛЯ ГРАФИКА
 #          style_settings:
@@ -217,13 +217,13 @@ protocol_output:
 #          show_limit_line: false
 #          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
-        - title: "S21 - SUCOFLEX 1.5м + 10м"
-          unit: "GHz"
-          freq_min: 18.0         # 18 ГГц
-          freq_max: 40.0          # 40 ГГц
-          x_scale: "linear"
-          show_limit_line: false
-          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+#        - title: "S21 - SUCOFLEX 1.5м + 10м"
+#          unit: "GHz"
+#          freq_min: 18.0         # 18 ГГц
+#          freq_max: 40.0          # 40 ГГц
+#          x_scale: "linear"
+#          show_limit_line: false
+#          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
 
 #        - title: "S21 - SUCOFLEX 1.5м + 10м"
 #          unit: "GHz"

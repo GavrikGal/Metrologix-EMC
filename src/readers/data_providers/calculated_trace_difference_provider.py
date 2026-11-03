@@ -65,15 +65,27 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         # 🌟 МАТЕМАТИЧЕСКИЙ РАСЧЕТ СРЕДНЕГО И СКО (Неопределенность типа А)
         # mean(axis=1) считает среднюю трассу затухания
         mean_values = df_clean[only_traces_columns].mean(axis=1).values
+
+        # Учет неопределенности нелинейности шкалы измерительного прибора
+        # Граничный порог различной нелинейности шкалы
+        floor = -18.0 + 107.01 + 10.0
+        # Неопределенность нелинейности шкалы для каждой измеренной точки
+        u_scale_fidelity = np.where(mean_values >= floor, 0.1, 0.07) # todo: данные из паспорта надо это не жостко вшивать
+        u_scale_fidelity = u_scale_fidelity / np.sqrt(3) # для прямоугольного распределения
+
         # std(axis=1, ddof=1) считает экспериментальное СКО для n-трасс
         std_deviations = df_clean[only_traces_columns].std(axis=1, ddof=1).values
 
         # Стандартная неопределенность среднего значения (u = s / sqrt(n))
         u_type_a_values = std_deviations / np.sqrt(number_of_traces)
 
+        # Сложение через корень неопределенностей
+        u_total = np.sqrt((u_type_a_values) ** 2 + (u_scale_fidelity) ** 2)
+
+
         # Собираем промежуточный Parameter
         value_trace = Trace(raw_frequencies, mean_values)
-        uncertainty_trace = Uncertainty(raw_frequencies, u_type_a_values, distribution_type='normal', k_factor=1.0)
+        uncertainty_trace = Uncertainty(raw_frequencies, u_total, distribution_type='normal', k_factor=1.0)
 
         parameter = Parameter(name=parameter_name, value_trace=value_trace, uncertainty_trace=uncertainty_trace)
 
