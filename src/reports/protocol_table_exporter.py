@@ -70,8 +70,8 @@ class ProtocolTableExporter:
         protocol_dict[f'Calculated {param_name}, dB'] = np.round(raw_slice_data['values_db'].values, 3)
 
         # Финальные метрологические результаты неопределенностей
-        protocol_dict['Uncertainty u(xi) (k=1), dB '] = np.round(raw_slice_data['raw_uncertainty_db'], 4)
-        protocol_dict['Expanded Uncertainty (k=2), dB'] = np.round(raw_slice_data['raw_uncertainty_db'] * 2, 3)
+        protocol_dict['Uncertainty u(xi) (k=1), dB '] = np.round(raw_slice_data['raw_uncertainty_db'], 3)
+        protocol_dict['Expanded Uncertainty (k=2), dB'] = np.round(protocol_dict['Uncertainty u(xi) (k=1), dB '] * 2, 3)
 
         # Сохраняем в CSV
         df_protocol = pd.DataFrame(protocol_dict)
