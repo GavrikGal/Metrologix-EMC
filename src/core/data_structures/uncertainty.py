@@ -84,6 +84,17 @@ class Uncertainty(Trace):
         self_db = self.to_db()
         other_db = other.to_db()
 
+
+        if len(self_db.frequencies) == len(other_db.frequencies) and np.allclose(self_db.frequencies,
+                                                                                 other_db.frequencies):
+            u_std_self = self_db.values / self.divisor
+            u_std_other = other_db.values / other.divisor
+
+            rss_values = np.sqrt(u_std_self ** 2 + u_std_other ** 2)
+
+            return Uncertainty(self_db.frequencies, rss_values, self_db.frequencies_units,
+                           'dB', 'normal', k_factor=1.0)
+
         from src.core.utils.trace_manipulator import TraceManipulator
         aligned_self, aligned_other = TraceManipulator.concatenate_grids([self_db, other_db])
 

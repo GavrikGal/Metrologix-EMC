@@ -1,7 +1,7 @@
 # hardware_library/attenuator_20db/device_config.yaml
-device_name: "Pasternack 20dB Coaxial Attenuator"
-device_short_id: "ATT-20dB"
-serial_number: "55555"
+device_name: "MCE/Weinschel 20dB Coaxial Attenuator"
+device_short_id: "ATT_MCE-20dB"
+serial_number: "BP5202"
 device_type: "Attenuator"
 
 operating_frequency_range:
@@ -11,15 +11,25 @@ operating_frequency_range:
 parameters:
   # Коэффициент передачи (затухание константой 20 дБ)
   S21:
-    source_type: "constant"
-    value: -20.0
-    f_min: 0.0
-    f_max: 18000000000.0
-    uncertainty:
-      type: "constant"
-      value: 0.1                     # Погрешность из паспорта аттенюатора
-      distribution: "normal"         # Поверка всегда идет по нормальному закону
-      k_factor: 2
+    source_type: "calculated_trace_difference"
+    system1_baseline:
+#      - path: "raw_data/sys1/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=9kHz Att=10dB trs=3].csv"
+#      - path: "raw_data/sys1/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=8ms + RBW=120kHz Att=10dB Sweep=2_67ms trs=3].csv"
+      - path: "raw_data/sys1/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9ms trs=3].csv"
+#        offset_db: 20.0  # компенсируем разницу генератора (+20 дБ)
+
+    # Система 2 (Тракт с кабелем)
+    system2_with_cable:
+#      - path: "raw_data/sys2/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=9kHz Att=10dB trs=3].csv"
+#      - path: "raw_data/sys2/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=8ms + RBW=120kHz Att=10dB Sweep=2_67ms trs=3].csv"
+      - path: "raw_data/sys2/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9ms trs=3].csv"
+
+    reader_settings:
+      data_start_marker: "DATA"
+      delimiter: ","
+      use_columns: [ 0, 1, 2, 3 ]
+      nan_values: [ -893.01029995664 ]
+
 
   # Входной КСВН аттенюатора
   S11:

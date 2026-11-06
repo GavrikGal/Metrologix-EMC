@@ -34,6 +34,7 @@ class PlotRenderer(BaseRenderer):
 
         f_min_spec = float(sub_cfg.get('freq_min', freqs_scaled.min()))
         f_max_spec = float(sub_cfg.get('freq_max', freqs_scaled.max()))
+
         f_min_spec = freqs_scaled.min()
         f_max_spec = freqs_scaled.max()
 
@@ -55,9 +56,15 @@ class PlotRenderer(BaseRenderer):
         plt_x_min, plt_x_max = plt.xlim()
         self._draw_shading_zones(plt_x_min, plt_x_max, f_min_spec, f_max_spec, style_provider)
 
+        # Установка развертки по вертикали
+        plt_y_min, plt_y_max = plt.ylim()
+        value_min_spec = float(sub_cfg.get('value_min', plt_y_min))
+        value_max_spec = float(sub_cfg.get('value_max', plt_y_max))
+
         # todo: в аннотациях (из-за большего количества точке на графике) вычисляется и отображается не тот же максимум, что в таблице для протокола
         # self._draw_maximum_uncertainty_annotation(values, uncertainty, target_unit, f_min_spec, f_max_spec)
-        self._apply_grid_and_axes_settings(sub_cfg, target_unit, param_name, plt_x_min, plt_x_max)
+        self._apply_grid_and_axes_settings(sub_cfg, target_unit, param_name, plt_x_min, plt_x_max,
+                                           value_min_spec, value_max_spec)
 
         # Сохранение готового файла
         filename = NameBuilder.build_standard_filename(device_config, freqs_hz.min(), freqs_hz.max(),
@@ -195,11 +202,12 @@ class PlotRenderer(BaseRenderer):
             )
 
     def _apply_grid_and_axes_settings(self, sub_cfg: dict, unit: str, param_name: str, x_min: float,
-                                      x_max: float) -> None:
+                                      x_max: float, y_min: float, y_max:float) -> None:
         """Настройка масштабных сеток, логарифмических шкал и подписей осей"""
         scale_type = sub_cfg.get('x_scale', self.default_plots_config.get('x_scale', 'linear'))
         plt.xscale(scale_type)
         plt.xlim(x_min, x_max)
+        plt.ylim(y_min, y_max)
 
         # Основная и вспомогательная сетки
         plt.grid(True, which='major', ls="-", alpha=0.5, zorder=0, lw=0.3)
