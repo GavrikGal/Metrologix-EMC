@@ -1,0 +1,59 @@
+# hardware_library/attenuator_20db/device_config.yaml
+device_name: "MCE/Weinschel 20dB Coaxial Attenuator"
+device_short_id: "ATT_MCE-20dB"
+serial_number: "BP5190"
+device_type: "Attenuator"
+
+operating_frequency_range:
+  min_hz: 0.0
+  max_hz: 18000000000.0
+
+correction_export_rules:
+  template_file: "template.csv"       # Шаблон теперь сразу имеет нужное прибору расширение
+  target_freq_unit: "MHz"             # Прибор ждет частоту в МГц
+  template_meta:
+    model_name: "Attenuator MCE/Weinschel 20dB №BP5202"
+    freq_unit: "MHz"
+    antenna_unit: "None"
+    interpolation_type: "Linear"
+
+parameters:
+  # Коэффициент передачи (затухание константой 20 дБ)
+  S21:
+    source_type: "calculated_trace_difference"
+    system1_baseline:
+#      - path: "raw_data/sys1/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=9_66ms + RBW=9kHz Att=10dB Sweep=7_47 trs=3].csv"
+#      - path: "raw_data/sys1/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=3_45ms + RBW=120kHz Att=10dB Sweep=2_67 trs=3].csv"
+      - path: "raw_data/sys1/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9 trs=3].csv"
+
+    # Система 2 (Тракт с кабелем)
+    system2_with_cable:
+#      - path: "raw_data/sys2/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=9_66ms + RBW=9kHz Att=10dB Sweep=7_47 trs=3].csv"
+#      - path: "raw_data/sys2/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=3_45ms + RBW=120kHz Att=10dB Sweep=2_67 trs=3].csv"
+      - path: "raw_data/sys2/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9 trs=3].csv"
+#
+    reader_settings:
+      data_start_marker: "DATA"
+      delimiter: ","
+      use_columns: [ 0, 1, 2, 3 ]
+      nan_values: [ -893.01029995664 ]
+
+
+  # Входной КСВН аттенюатора
+  S11:
+    source_type: "constant"
+    value: 1.03                      # Реальный КСВН породистого аттенюатора
+    values_units: "SWR"
+    f_min: 0.0
+    f_max: 18000000000.0
+
+  # Выходной КСВН аттенюатора
+  S22:
+    source_type: "constant"
+    value: 1.03                      # Реальный КСВН породистого аттенюатора
+    values_units: "SWR"
+    f_min: 0.0
+    f_max: 18000000000.0
+
+  Tract_Mismatch:
+    source_type: "calculated_mismatch"

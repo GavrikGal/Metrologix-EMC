@@ -22,16 +22,16 @@ parameters:
   S21:
     source_type: "calculated_trace_difference"
     system1_baseline:
-      - path: "raw_data/sys1/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=9kHz Att=10dB trs=3].csv"
-      - path: "raw_data/sys1/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=8ms + RBW=120kHz Att=10dB Sweep=2_67ms trs=3].csv"
-      - path: "raw_data/sys1/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9ms trs=3].csv"
+#      - path: "raw_data (test 2)/sys1/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=9_66ms + RBW=9kHz Att=10dB Sweep=7_47 trs=3].csv"
+#      - path: "raw_data (test 2)/sys1/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=3_45ms + RBW=120kHz Att=10dB Sweep=2_67 trs=3].csv"
+      - path: "raw_data (test 2)/sys1/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9 trs=3].csv"
 #        offset_db: 20.0  # компенсируем разницу генератора (+20 дБ)
 
     # Система 2 (Тракт с кабелем)
     system2_with_cable:
-      - path: "raw_data/sys2/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=20ms + RBW=9kHz Att=10dB trs=3].csv"
-      - path: "raw_data/sys2/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=8ms + RBW=120kHz Att=10dB Sweep=2_67ms trs=3].csv"
-      - path: "raw_data/sys2/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9ms trs=3].csv"
+#      - path: "raw_data (test 2)/sys2/U 0_15-30MHz [U_gen=100dB Step=3kHz Dwell=9_66ms + RBW=9kHz Att=10dB Sweep=7_47 trs=3].csv"
+#      - path: "raw_data (test 2)/sys2/U 30-1000MHz [U_gen=100dB Step=40kHz Dwell=3_45ms + RBW=120kHz Att=10dB Sweep=2_67 trs=3].csv"
+      - path: "raw_data (test 2)/sys2/U 1-18GHz [U_gen=100dB Step=2MHz Dwell=40ms + RBW=1MHz Att=10dB Sweep=30_9 trs=3].csv"
 #
     reader_settings:
       data_start_marker: "DATA"

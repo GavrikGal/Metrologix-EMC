@@ -33,7 +33,7 @@ hardware_setup:
   reading_process: "operator_reading" # Папка оператора
   lisn: "nslk_8127"                   # Папка эквивалента сети
   main: "main"                        # Папка сети питания
-  attenuator: "attenuator_20db"
+  attenuator: "attenuator_20db_BP5190"
 
 tract_cascade:
   source: "lisn"
@@ -309,8 +309,8 @@ protocol_output:
       sub_plots:
         - title: "S21 - MCE/Weinschel №BP5202"
           unit: "MHz"
-          freq_min: 0.150         # 150 кГц
-          freq_max: 4000.0         # 30 МГц
+          freq_min: 1000.0         # 150 кГц
+          freq_max: 18000.0         # 30 МГц
           value_min: -22
           value_max: -18
           x_scale: "linear"              # "log" / "linear"
