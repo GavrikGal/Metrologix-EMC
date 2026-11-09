@@ -12,7 +12,8 @@ from src.reports.utils.name_builder import NameBuilder
 class CorrectionRenderer(BaseRenderer):
     """Компонент умной интерполяции сеток и экспорта файлов поправок через Jinja2 шаблоны"""
 
-    def render(self, output_dir: str, device, param_name: str, settings: dict, target_frequencies: np.ndarray):
+    def render(self, output_dir: str, device,
+               param_name: str, settings: dict, target_frequencies: np.ndarray):
         parameter = device.processed_parameters[param_name]
         interp_values, _ = parameter.get_values_for_frequencies(target_frequencies)
 
