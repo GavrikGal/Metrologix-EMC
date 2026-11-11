@@ -108,6 +108,7 @@ class Trace:
                     f_start = raw_freqs[index_start+1]
                     f_end = raw_freqs[index_end]
                     freqs_in_range, values_in_range = self.get_raw_slice(f_start, f_end)
+                    values_in_range = abs(values_in_range)
                     max_value_in_range = np.max(values_in_range)
                     max_value_index = np.where(values_in_range == max_value_in_range)[0]
                     freq_slice.append(float(freqs_in_range[max_value_index][0]))

@@ -1,7 +1,11 @@
 # src/core/budget_calculator.py
+import logging
+
 import numpy as np
 from src.core.task import Task
 from src.core.hardware import Hardware
+
+logger = logging.getLogger("Metrologix")
 
 
 class CISPRBudgetCalculator:
@@ -25,19 +29,29 @@ class CISPRBudgetCalculator:
 
             if parameter.uncertainty_trace:
                 # Делегирование: Неопределенность сама считает свои максимумы в диапазоне задачи
-                # todo: Надо чтобы брались данные, которые выводились в таблицы протоколов
-                max_u_raw, u_std_val = parameter.uncertainty_trace.get_max_uncertainties_in_range(
+                # todo: Надо чтобы брались данные, которые выводились в таблицы протоколов.
+                #       Сейчас костыль и надо ставить столько точек, сколько в протоколе
+                final_values, raw_uncertainty = parameter.get_raw_max_data_in_frequency_range(task.frequency_min_hz,
+                                                                                              task.frequency_max_hz,
+                                                                                              max_by='value',
+                                                                                              points_count=40)
+
+                max_u_raw, u_std_val = raw_uncertainty.get_max_uncertainties_in_range(
                     task.frequency_min_hz, task.frequency_max_hz
                 )
 
-                # 🌟 ИСПРАВЛЕНИЕ: Выбор текстовой метки для исходного значения
+                # max_u_raw, u_std_val = parameter.uncertainty_trace.get_max_uncertainties_in_range(
+                #     task.frequency_min_hz, task.frequency_max_hz
+                # )
+
+                # Выбор текстовой метки для исходного значения
                 if not parameter.uncertainty_trace.is_symmetric:
                     if max_u_raw > 0:
                         raw_value_display = f"+{max_u_raw:.2f} / 0.00"
                     else:
                         raw_value_display = 0.00
                 else:
-                    raw_value_display = round(max_u_raw, 4)
+                    raw_value_display = round(max_u_raw, 3)
 
                 dist_type = parameter.uncertainty_trace.distribution_type.upper()
                 if dist_type == 'NORMAL':
@@ -54,7 +68,7 @@ class CISPRBudgetCalculator:
                 'device': f"{device.name} [{device_role}]",
                 'raw_val': raw_value_display,
                 'dist': dist_str,
-                'u_std': round(u_std_val, 4)
+                'u_std': round(u_std_val, 3)
             })
 
         return calculated_rows

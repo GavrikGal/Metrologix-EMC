@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import logging
+
 from .base_provider import BaseDataProvider
 from src.readers.hardware_data_reader import HardwareDataReader
 from src.core.data_structures.parameter import Parameter
@@ -71,8 +72,15 @@ class CalculatedTraceDifferenceProvider(BaseDataProvider):
         # 3. СУММАРНАЯ стандартная неопределенность u_c
         # u_c = np.sqrt(final_parameter.uncertainty_trace.values ** 2 + u_fidelity_total ** 2 + u_b_rbw ** 2)
         u_c = np.sqrt(final_parameter.uncertainty_trace.values ** 2 + u_fidelity_total ** 2)
-        final_parameter.uncertainty_trace.values = u_c
+        final_uncertainty_trace = Uncertainty(final_parameter.uncertainty_trace.frequencies,
+                                              u_c * 2,
+                                              final_parameter.uncertainty_trace.frequencies_units,
+                                              final_parameter.uncertainty_trace.values_units,
+                                              distribution_type='normal',
+                                              k_factor=2.0)
+        final_parameter.uncertainty_trace = final_uncertainty_trace
 
+        # final_parameter.uncertainty_trace.values = u_c
 
         # Задание динамического имени параметра из YAML-конфигурации прибора
         final_parameter.name = self.config.get('parameter_system_name', 'S21')
