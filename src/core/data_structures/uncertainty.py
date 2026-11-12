@@ -64,7 +64,7 @@ class Uncertainty(Trace):
 
     def get_max_uncertainties_in_range(self, f_min_hz: float, f_max_hz: float) -> tuple[float, float]:
         slice_freqs, slice_raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
-        return float(np.max(slice_raw_values)), float(np.max(slice_raw_values / self.divisor))
+        return float(np.max(slice_raw_values)), float(np.max(slice_raw_values ) / self.divisor)
 
     def get_raw_max_values_in_frequency_range(self, f_min: float, f_max: float,
                                               points_count: int = 2, freq_unit: str = 'Hz') -> 'Uncertainty':

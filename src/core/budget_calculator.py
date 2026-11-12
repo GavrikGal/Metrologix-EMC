@@ -33,8 +33,14 @@ class CISPRBudgetCalculator:
                 #       Сейчас костыль и надо ставить столько точек, сколько в протоколе
                 final_values, raw_uncertainty = parameter.get_raw_max_data_in_frequency_range(task.frequency_min_hz,
                                                                                               task.frequency_max_hz,
-                                                                                              max_by='value',
+                                                                                              max_by='uncertainty',
                                                                                               points_count=40)
+
+                if parameter.name == "S21":
+                    final_values, raw_uncertainty = parameter.get_raw_max_data_in_frequency_range(task.frequency_min_hz,
+                                                                                                  task.frequency_max_hz,
+                                                                                                  max_by='value',
+                                                                                                  points_count=40)
 
                 max_u_raw, u_std_val = raw_uncertainty.get_max_uncertainties_in_range(
                     task.frequency_min_hz, task.frequency_max_hz

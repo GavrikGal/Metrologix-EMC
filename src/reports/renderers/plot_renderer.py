@@ -99,7 +99,7 @@ class PlotRenderer(BaseRenderer):
         """Отрисовка полупрозрачного коридора расширенной неопределенности k=2"""
         # В значения (values) неопределенности (Uncertainty) хранится расширенная неопределенность
         y = values.values
-        u_expanded = uncertainty.get_values_for_frequencies(values.frequencies) * 2
+        u_expanded = uncertainty.get_values_for_frequencies(values.frequencies)
         x = values.frequencies
 
         # Конвертация единиц измерения частоты, для которых хранятся данные, в запрашиваемые

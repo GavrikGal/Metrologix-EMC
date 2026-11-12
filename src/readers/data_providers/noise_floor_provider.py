@@ -9,7 +9,7 @@ from src.core.data_structures.trace import Trace
 from src.core.data_structures.uncertainty import Uncertainty
 from src.core.utils.trace_manipulator import TraceManipulator
 from src.core.math_models import FrequencyConverter
-
+from ...core.data_structures import parameter
 
 logger = logging.getLogger("Metrologix")
 
@@ -79,4 +79,6 @@ class NoiseFloorDataProvider(BaseDataProvider):
         logger.info(f"Успешно синтезирован параметр шумов. Точек склейки: {len(calculated_error_values)}, "
                     f"Худшая погрешность детектора: {calculated_error_values.max():.2f} дБ")
 
-        return Parameter('Noise_Floor', final_value_trace, final_uncertainty_trace)
+        final_parameter = Parameter('Noise_Floor', final_value_trace, final_uncertainty_trace)
+
+        return final_parameter

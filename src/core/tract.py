@@ -73,7 +73,7 @@ class Tract:
             else:
                 s21_trace = Trace.create_constant(final_grid_hz.min(), final_grid_hz.max(), 0.0, values_units='dB')
 
-            # 🌟 АБСОЛЮТНАЯ ИНТУИТИВНОСТЬ: Трасса сама понимает шкалу (дБ или SWR) и выдает |Gamma| от 0 до 1!
+            # Трасса сама понимает шкалу (дБ или SWR) и выдает |Gamma| от 0 до 1!
             gamma_in_array = trace_in.to_gamma().values
             gamma_out_array = trace_out.to_gamma().values
 
@@ -112,5 +112,5 @@ class Tract:
         v_trace = Trace(final_grid_hz, np.zeros_like(final_grid_hz), values_units='dB')
         u_trace = Uncertainty(final_grid_hz, final_limits, values_units='dB', distribution_type='u_shaped')
 
-        logger.info(f"[Tract] Расчет рассогласования каскада завершен успешно. Элементов: {len(nodes)}")
+        logger.info(f"Расчет рассогласования каскада завершен успешно. Элементов: {len(nodes)}")
         return Parameter("Tract_Mismatch", v_trace, u_trace)
