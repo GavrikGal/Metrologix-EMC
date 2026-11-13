@@ -316,3 +316,15 @@ protocol_output:
           x_scale: "linear"              # "log" / "linear"
           show_limit_line: false         # true/false
           table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА
+
+    - device_id: "main"       # Ссылаемся на ключ из hardware_setup (cable_system??) (Cable_11m??)
+      target_parameter: "Main_Noise_Floor"
+      show_uncertainty: true
+      sub_plots:
+        - title: "Main Noise Floor"
+          unit: "MHz"
+          freq_min: 0.150         # 150 кГц
+          freq_max: 30.0         # 30 МГц
+          x_scale: "linear"              # "log" / "linear"
+          show_limit_line: false         # true/false
+          table_points_count: 40       # СКОЛЬКО РЕАЛЬНЫХ ТОЧЕК ДОБАВИТЬ В ТАБЛИЦУ ПРОТОКОЛА

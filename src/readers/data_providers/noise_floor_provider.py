@@ -60,6 +60,10 @@ class NoiseFloorDataProvider(BaseDataProvider):
         # 5. Вычисляем соотношение Сигнал/Шум
         signal_to_noise_ratio = task_limit_trace - noise
 
+        signal_to_noise_ratio_for_range = signal_to_noise_ratio.value_trace.get_raw_slice(150000, 30000000)
+
+        logger.debug(f'{signal_to_noise_ratio_for_range[1].min()=}')
+
         # 🌟 6. ИНТЕРПОЛЯЦИЯ НА ЛЕТУ СИЛАМИ САМОГО ОБЪЕКТА TRACE ГРАФИКА
         # Мы просто просим объект cispr_graph_trace выдать значения погрешностей
         # для вычисленных соотношений signal_to_noise_ratio
