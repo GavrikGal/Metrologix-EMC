@@ -1,0 +1,91 @@
+device_name: "Agilent MXA"
+device_short_id: "N9020A"
+serial_number: "MY48011205"
+device_type: "Receiver"
+
+# РАБОЧИЙ ДИАПАЗОН ПРИБОРА ПАСПОРТНЫЙ
+operating_frequency_range:
+  min_hz: 10.0                          # От 2 Гц
+  max_hz: 26500000000.0                # До 26.5 ГГц
+
+correction_export_rules:
+  template_file: "template.csv"       # Шаблон теперь сразу имеет нужное прибору расширение
+  target_freq_unit: "MHz"             # Прибор ждет частоту в МГц
+  template_meta:
+    model_name: "N9020A"
+    freq_unit: "MHz"
+    antenna_unit: "None"
+    interpolation_type: "Linear"
+
+# ОПИСАНИЕ СВИДЕТЕЛЬСТВА О ПОВЕРКЕ ПРИЕМНИКА
+parameters:
+  # 1. Синусоидальная точность (таблица Excel из свидетельства)
+  Sine_Accuracy:
+    source_type: "table"
+    file_path: "Пределы допускаемой абсолютной погрешности уровня мощности входного сигнала (Атт 10дБ).xlsx" # Имя эксель-файла в папке прибора
+
+    columns_mapping:    # Говорим коду брать строго эти колонки из оригинального Excel
+      frequency: 0      # Колонка 0 - Частота, МГц
+      value: 1          # Колонка 1 - Погрешность измерения уровня мощности, дБ (0)
+      uncertainty: 2    # Колонка 2 - Расширенная неопределенность, дБ (прямоугольный закон)
+
+    reader_settings:
+      file_format: "excel"              # открыть Excel
+      skip_rows: 1                      # Пропускаем шапку с названиями колонок
+      file_frequency_unit: "MHz"        # В файле частота указана в МГц!
+
+    uncertainty:
+      type: "table"                     # Неопределенность берем из самой таблицы
+      distribution: "rectangular"            # В свидетельствах распределение всегда нормальное
+
+  # 2. Амплитудная импульсная характеристика (По соответствию СИСПР 16-1-1)
+  Pulse_Amplitude_Response:
+    source_type: "constant"
+    value: 0.0                          # Поправки нет (0 дБ)
+    uncertainty:
+      type: "constant"
+      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
+
+  # 3. Характеристика от частоты повторения импульсов
+  Pulse_Repetition_Frequency_Response:
+    source_type: "constant"
+    value: 0.0                          # Поправки нет (0 дБ)
+    uncertainty:
+      type: "constant"
+      value: 1.5                        # Неопределенность 1.5 дБ по СИСПР
+      distribution: "rectangular"       # Прямоугольное распределение (делитель sqrt(3))
+
+  # 4. Минимальный уровень шума
+  Receiver_Noise_Floor:
+    source_type: "calculated_noise_floor"
+    file_path:
+      - "noise/Receiver Noise 9kHz-100MHz.csv"
+      - "noise/Receiver Noise 100MHz-27GHz.csv"
+    reader_settings:
+      file_format: "text"
+      skip_rows: 1
+      file_frequency_unit: "Hz"
+      data_start_marker: "DATA"
+      delimiter: ","
+#      use_columns: [ 3, 5 ]
+#      nan_values: [ -893.01029995664 ]
+    columns_mapping:
+      frequency: 3
+      value: 5
+
+  Receiver_VSWR:
+    source_type: "constant"
+    value: 1.134
+    values_units: "SWR"
+    min_hz: 10.0
+    max_hz: 26500000000.0
+
+#  Receiver_VSWR:
+#    source_type: "table"
+#    file_path: "vswr_spec.xlsx"
+#    reader_settings:
+#      file_format: "excel"
+#      skip_rows: 1
+#      file_frequency_unit: "Hz"
+#    columns_mapping: { frequency: 0, value: 1 }

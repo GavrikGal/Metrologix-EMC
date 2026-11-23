@@ -18,6 +18,8 @@ class Uncertainty(Trace):
         super().__init__(frequencies, values, frequencies_units, values_units)
         self.distribution_type = distribution_type.lower()
         self.is_symmetric = is_symmetric
+        self.symmetric_factor = 1 if self.is_symmetric else 0.5
+
         self.asymmetric_label = asymmetric_label
 
         if self.distribution_type == 'normal':
@@ -59,12 +61,12 @@ class Uncertainty(Trace):
 
 
     def get_standard_uncertainty_for_frequencies(self, frequencies: np.ndarray) -> np.ndarray:
-        return self.get_values_for_frequencies(frequencies) / self.divisor
+        return (self.get_values_for_frequencies(frequencies) * self.symmetric_factor) / self.divisor
 
 
     def get_max_uncertainties_in_range(self, f_min_hz: float, f_max_hz: float) -> tuple[float, float]:
         slice_freqs, slice_raw_values = self.get_raw_slice(f_min_hz, f_max_hz)
-        return float(np.max(slice_raw_values)), float(np.max(slice_raw_values ) / self.divisor)
+        return float(np.max(slice_raw_values)), (float(np.max(slice_raw_values ) * self.symmetric_factor) / self.divisor)
 
     def get_raw_max_values_in_frequency_range(self, f_min: float, f_max: float,
                                               points_count: int = 2, freq_unit: str = 'Hz') -> 'Uncertainty':

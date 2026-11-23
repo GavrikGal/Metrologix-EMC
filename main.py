@@ -9,7 +9,8 @@ if __name__ == "__main__":
 
     # 2. Формируем абсолютные пути к файлам конфигураций
     settings_path = os.path.join(root_directory, "settings", "default.yaml")
-    task_config_path = os.path.join(root_directory, "task_configs", "conducted_task.yaml")
+    # task_config_path = os.path.join(root_directory, "task_configs", "conducted_task.yaml")
+    task_config_path = os.path.join(root_directory, "task_configs", "conducted_task_n9020a_nslk.yaml")
 
     # 3. Читаем глобальные настройки приложения (settings)
     if not os.path.exists(settings_path):

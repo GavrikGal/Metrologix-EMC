@@ -1,0 +1,103 @@
+task_name: "Conducted_Uncertainty_Task_For_N9020A_NSLK"
+target_method: "CISPR 16-4-2 (Band B)"
+
+
+# ДИАПАЗОН ИССЛЕДОВАНИЯ ДЛЯ ОБЩЕГО БЮДЖЕТА
+budget_range_settings:
+  freq_min: 0.15                       # Начало полосы B (150 кГц)
+  freq_max: 30.0                       # Конец полосы B (30 МГц)
+  unit: "MHz"                          # Единица измерения частоты диапазона
+
+
+# Целевой детектор для расчетов: квазипик ("quasipeak") или пик ("peak")
+target_detector: "quasipeak"
+
+
+limits:
+  limit_type: "table"                # or constant
+  limit_path: "CISPR 32 cond class B.xlsx"
+  reader_settings:
+    file_format: "excel"              # Говорим ридеру открыть Excel
+    skip_rows: 1                      # Пропускаем шапку с названиями колонок
+    file_frequency_unit: "MHz"        # Важно! В файле частота указана в МГц!
+
+
+hardware_setup:
+  receiver: "agilent_n9020a"         # Папка приемника в hardware_library
+  cable_system: "sucoflex_11m"        # Папка кабеля в hardware_library
+  reading_process: "operator_reading" # Папка оператора
+  lisn: "nslk_8127"                   # Папка эквивалента сети
+  main: "main"                        # Папка сети питания
+  attenuator: "attenuator_20db"
+
+
+tract_cascade:
+  source: "lisn"
+  load: "receiver"
+  cascade:
+    - "attenuator"
+    - "cable_system"
+
+
+# ДИНАМИЧЕСКАЯ СХЕМА БЮДЖЕТА СИСПР ДЛЯ ДВИЖКА
+budget_components:
+  - component_name: "Receiver Reading"
+    device_role: "reading_process"
+    target_parameter: "Receiver_Reading"
+
+  - component_name: "Receiver Sine Wave Accuracy"
+    device_role: "receiver"
+    target_parameter: "Sine_Accuracy"
+
+  - component_name: "Receiver Pulse Amplitude Response"
+    device_role: "receiver"
+    target_parameter: "Pulse_Amplitude_Response"
+
+  - component_name: "Receiver Pulse Repetition Response"
+    device_role: "receiver"
+    target_parameter: "Pulse_Repetition_Frequency_Response"
+
+  - component_name: "Receiver Noise Floor"
+    device_role: "receiver"
+    target_parameter: "Receiver_Noise_Floor"
+
+  - component_name: "Cable System Attenuation"
+    device_role: "cable_system"
+    target_parameter: "S21"
+
+  - component_name: "External Attenuator Loss"
+    device_role: "attenuator"
+    target_parameter: "S21"
+
+  - component_name: "LISN Attenuation"
+    device_role: "lisn"
+    target_parameter: "Correction_Factor"
+
+  - component_name: "LISN Impedance"
+    device_role: "lisn"
+    target_parameter: "Impedance"
+
+  - component_name: "LISN Frequency Interpolation"
+    device_role: "lisn"
+    target_parameter: "Frequency_Interpolation"
+
+  - component_name: "Main Noise Floor"
+    device_role: "main"
+    target_parameter: "Main_Noise_Floor"
+
+  - component_name: "Tract Mismatch Uncertainty"
+    device_role: "cable_system"               # Закреплен за кабелем, так как он лежит между приборами
+    target_parameter: "Tract_Mismatch"        # Строго имя ключа из CalculatedMismatchProvider
+
+
+
+
+# ЦЕНТРАЛИЗОВАННЫЕ НАСТРОЙКИ ЭКСПОРТА КОРРЕКЦИЙ В ЗАДАЧЕ
+hardware_corrections_output:
+  generate_corrections: false          # Выключить модуль генерации файлов
+
+
+# Блок формирования материалов отчетного протокола
+protocol_output:
+  generate_plots: false
+  generate_data_tables: false          # ВЫКЛЮЧАЕМ ГЕНЕРАЦИЮ ТАБЛИЦ ДЛЯ ПРОТОКОЛА
