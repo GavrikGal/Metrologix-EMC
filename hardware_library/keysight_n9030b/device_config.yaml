@@ -30,9 +30,9 @@ parameters:
       uncertainty: 3    # Колонка 3 - Расширенная неопределенность, дБ
 
     reader_settings:
-      file_format: "excel"              # Говорим ридеру открыть Excel
+      file_format: "excel"              # открыть Excel
       skip_rows: 1                      # Пропускаем шапку с названиями колонок
-      file_frequency_unit: "MHz"        # Важно! В файле частота указана в МГц!
+      file_frequency_unit: "MHz"        # В файле частота указана в МГц!
 
     uncertainty:
       type: "table"                     # Неопределенность берем из самой таблицы
@@ -61,8 +61,8 @@ parameters:
   Receiver_Noise_Floor:
     source_type: "calculated_noise_floor"
     file_path:
-      - "noise/Noise 9kHz-100MHz.csv"
-      - "noise/Noise 100MHz-50GHz.csv"
+      - "noise/Receiver noises (N9030B) 9kHz-100MHz.csv"
+      - "noise/Receiver noises (N9030B) 100MHz-50GHz.csv"
     reader_settings:
       file_format: "text"
       skip_rows: 1
